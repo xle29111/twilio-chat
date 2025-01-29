@@ -1,0 +1,46 @@
+name: Twilio Serverless Deployment
+
+on:
+  push:
+    branches:
+      - feature/*
+      - develop
+      - rt
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Instalar Node.js v18
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # Instalar dependencias dentro del folder my-project
+      - name: Install Dependencies
+        run: |
+          cd my-project
+          npm install
+
+      # Instalar Twilio CLI
+      - name: Install Twilio CLI
+        run: npm install -g twilio-cli
+
+      # Configurar Twilio CLI con los secretos
+      - name: Configure Twilio CLI
+        run: |
+          twilio login --account-sid $TWILIO_ACCOUNT_SID --auth-token $TWILIO_AUTH_TOKEN
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+
+      # Desplegar el servicio en Twilio Serverless
+      - name: Deploy to Twilio Serverless
+        run: |
+          cd my-project
+          twilio serverless:deploy
