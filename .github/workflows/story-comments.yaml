@@ -49,8 +49,8 @@ jobs:
           npm install
 
       # Paso 5: Ejecutar el comando de despliegue, pasando las variables extraídas
-      - name: Deploy to production
-        run: |
-          cd my-project
-          npm run deploy:cco-ps -- -c"Story Number: ${{ env.STORY_NUMBER }} - Comment: ${{ env.COMMENT }}"
+      #- name: Deploy to production
+      #  run: |
+      #    cd my-project
+      #    npm run deploy:cco-ps -- -c"Story Number: ${{ env.STORY_NUMBER }} - Comment: ${{ env.COMMENT }}"
 
