@@ -28,7 +28,7 @@ jobs:
             echo "Story Number: $STORY_NUMBER"
             echo "Comment: $COMMENT"
           else
-            echo "No se encontró un número de historia y comentario en el mensaje de commit."
+            echo "No se encontró un número de historia y comentario en el mensaje de commit para este proyecto."
             exit 1
           fi
 
