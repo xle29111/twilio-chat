@@ -14,15 +14,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Paso 2: Instalar Node.js (versión deseada)
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      # Paso 3: Instalar dependencias
-      - name: Install dependencies
-        run: npm install
 
       # Paso 4: Obtener el mensaje de commit y extraer el número de historia y el comentario
       - name: Extract story number and comment from commit message
