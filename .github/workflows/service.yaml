@@ -34,10 +34,10 @@ jobs:
       # Configurar Twilio CLI con los secretos
       - name: Configure Twilio CLI
         run: |
-          twilio login --account-sid $TWILIO_ACCOUNT_SID --auth-token $TWILIO_AUTH_TOKEN
+          twilio login --account-sid $ACCOUNT_SID --auth-token $AUTH_TOKEN
         env:
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
 
       # Desplegar el servicio en Twilio Serverless
       - name: Deploy to Twilio Serverless
