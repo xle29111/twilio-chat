@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Paso 2: Obtener el mensaje del último commit (para feature) o la descripción del PR (para develop)
+      # Paso 2: Obtener el mensaje del último commit (para feature) o el título del PR (para develop)
       - name: Get message based on branch
         id: get-message
         run: |
@@ -26,8 +26,13 @@ jobs:
             MESSAGE="${{ github.event.head_commit.message }}"
             echo "Using commit message: $MESSAGE"
           elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
-            MESSAGE="${{ github.event.pull_request.title }}"
-            echo "Using PR description: $MESSAGE"
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              MESSAGE="${{ github.event.pull_request.title }}"
+              echo "Using PR title: $MESSAGE"
+            else
+              MESSAGE="${{ github.event.head_commit.message }}"
+              echo "Using commit message (develop branch, non-PR event): $MESSAGE"
+            fi
           else
             echo "Unsupported branch"
             exit 1
@@ -59,5 +64,8 @@ jobs:
       # Paso 5: Construir el mensaje completo y mostrarlo por consola
       - name: Build and display full message
         run: |
+          echo "MESSAGE: $MESSAGE"
+          echo "VERSION: $VERSION"
+          echo "TAG: $TAG"
           FULL_MESSAGE="$MESSAGE - v$VERSION $TAG"
           echo "Full Message: $FULL_MESSAGE"
