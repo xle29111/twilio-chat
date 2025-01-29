@@ -1,0 +1,50 @@
+name: Build Deployment Message
+
+on:
+  push:
+    branches:
+      - feature/*
+      - develop
+
+jobs:
+  build-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Checkout del código
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Paso 2: Obtener el mensaje del último commit
+      - name: Get commit message
+        id: commit-message
+        run: |
+          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+          echo "Commit Message: $COMMIT_MESSAGE"
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      # Paso 3: Extraer la versión del package.json
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          VERSION=$(jq -r .version my-project/package.json)
+          echo "Package Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      # Paso 4: Determinar la etiqueta (DEV) basándose en la rama
+      - name: Determine tag
+        id: determine-tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/heads/feature/* || "${{ github.ref }}" == refs/heads/develop ]]; then
+            TAG="DEV"
+          else
+            TAG=""
+          fi
+          echo "Tag: $TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      # Paso 5: Construir el mensaje completo y mostrarlo por consola
+      - name: Build and display full message
+        run: |
+          FULL_MESSAGE="$COMMIT_MESSAGE - v$VERSION $TAG"
+          echo "Full Message: $FULL_MESSAGE"
