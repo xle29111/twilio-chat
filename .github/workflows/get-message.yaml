@@ -26,7 +26,7 @@ jobs:
             MESSAGE="${{ github.event.head_commit.message }}"
             echo "Using commit message: $MESSAGE"
           elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
-            MESSAGE="${{ github.event.pull_request.body }}"
+            MESSAGE="${{ github.event.pull_request.title }}"
             echo "Using PR description: $MESSAGE"
           else
             echo "Unsupported branch"
