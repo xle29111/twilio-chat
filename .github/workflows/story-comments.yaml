@@ -18,11 +18,14 @@ jobs:
       - name: Extract story number and comment from commit message
         id: extract_commit_info
         run: |
-          # Obtener el mensaje del commit más reciente
+          # Obtener el mensaje del commit más reciente (asegurarse de que el commit sea el correcto)
           COMMIT_MSG=$(git log -1 --pretty=%B)
 
+          # Mostrar el mensaje completo del commit
+          echo "Commit Message: $COMMIT_MSG"
+
           # Usar expresiones regulares para extraer el número de historia y el comentario
-          STORY_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '#\d+' | head -n 1)  # Extrae el primer #número
+          STORY_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '#\d+' | head -n 1 | tr -d '#')  # Extrae el número de la historia
           COMMENT=$(echo "$COMMIT_MSG" | sed -n 's/.*#\d\+ \(.*\)/\1/p')  # Extrae el comentario después del #story
 
           # Mostrar las variables por consola
@@ -46,8 +49,8 @@ jobs:
           npm install
 
       # Paso 5: Ejecutar el comando de despliegue, pasando las variables extraídas
-      #- name: Deploy to production
-      #  run: |
-      #    cd my-project
-      #    npm run deploy:cco-ps -- -c"Story Number: ${{ env.STORY_NUMBER }} - Comment: ${{ env.COMMENT }}"
+      - name: Deploy to production
+        run: |
+          cd my-project
+          npm run deploy:cco-ps -- -c"Story Number: ${{ env.STORY_NUMBER }} - Comment: ${{ env.COMMENT }}"
 
