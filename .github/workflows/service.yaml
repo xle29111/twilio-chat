@@ -37,7 +37,7 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
         run: |
-          twilio login --account-sid $TWILIO_ACCOUNT_SID --auth-token $TWILIO_AUTH_TOKEN --profile-name dev
+          twilio profiles:create dev --account-sid $TWILIO_ACCOUNT_SID --auth-token $TWILIO_AUTH_TOKEN
 
       - name: Set active profile
         run: twilio profiles:use dev
