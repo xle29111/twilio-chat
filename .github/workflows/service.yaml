@@ -31,17 +31,14 @@ jobs:
       - name: Install Twilio CLI
         run: npm install -g twilio-cli
 
-      # Configurar Twilio CLI con los secretos
-      - name: Login to Twilio 
+      # Configurar las variables de entorno para Twilio
+      - name: Set up Twilio Environment Variables
         env:
           TWILIO_ACCOUNT_SID: ${{ secrets.ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
         run: |
-          twilio profiles:create  --account-sid $TWILIO_ACCOUNT_SID --auth-token $TWILIO_AUTH_TOKEN --profile dev
-
-      - name: Set active profile
-        run: twilio profiles:use dev
-      
+          echo "TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}" >> $GITHUB_ENV
+          echo "TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}" >> $GITHUB_ENV
 
       # Desplegar el servicio en Twilio Serverless
       - name: Deploy to Twilio Serverless
