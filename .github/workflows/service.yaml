@@ -32,15 +32,20 @@ jobs:
         run: npm install -g twilio-cli
 
       # Configurar Twilio CLI con los secretos
-      - name: Configure Twilio CLI
-        run: |
-          twilio login --account-sid $ACCOUNT_SID --auth-token $AUTH_TOKEN
+      - name: Login to Twilio 
         env:
           TWILIO_ACCOUNT_SID: ${{ secrets.ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.AUTH_TOKEN }}
+        run: |
+          twilio login --account-sid $TWILIO_ACCOUNT_SID --auth-token $TWILIO_AUTH_TOKEN --profile-name dev
+
+      - name: Set active profile
+        run: twilio profiles:use dev
+      
 
       # Desplegar el servicio en Twilio Serverless
       - name: Deploy to Twilio Serverless
         run: |
           cd my-project
+          twilio plugins:install @twilio-labs/plugin-serverless
           twilio serverless:deploy
