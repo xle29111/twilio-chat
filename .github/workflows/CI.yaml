@@ -16,35 +16,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Detect changes in CCO MS
-      id: detect-cco-ms
-      run: |
-        if git diff --name-only HEAD^ HEAD | grep -q 'my-project/resources/CCO MS/'; then
-          echo "::set-output name=changed::true"
-          echo "Los cambios fueron hechos en la carpeta CCO MS"
-        else
-          echo "::set-output name=changed::false"
-        fi
+      - name: Detect changes
+        id: detect-changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "Changed files: $CHANGED_FILES"
 
-    - name: Detect changes in CCO PS
-      id: detect-cco-ps
-      run: |
-        if git diff --name-only HEAD^ HEAD | grep -q 'my-project/resources/CCO PS/'; then
-          echo "::set-output name=changed::true"
-          echo "Los cambios fueron hechos en la carpeta CCO PS"
-        else
-          echo "::set-output name=changed::false"
-        fi
+          if echo "$CHANGED_FILES" | grep -q "my-project/resources/CCO MS/"; then
+            echo "folder=CCO MS" >> $GITHUB_ENV
+            echo "Los cambios fueron hechos en la carpeta CCO MS"
+          elif echo "$CHANGED_FILES" | grep -q "my-project/resources/CCO PS/"; then
+            echo "folder=CCO PS" >> $GITHUB_ENV
+            echo "Los cambios fueron hechos en la carpeta CCO PS"
+          elif echo "$CHANGED_FILES" | grep -q "my-project/resources/chat/"; then
+            echo "folder=chat" >> $GITHUB_ENV
+            echo "Los cambios fueron hechos en la carpeta chat"
+          else
+            echo "No relevant changes detected."
+            exit 1
 
-    - name: Detect changes in chat
-      id: detect-chat
-      run: |
-        if git diff --name-only HEAD^ HEAD | grep -q 'my-project/resources/chat/'; then
-          echo "::set-output name=changed::true"
-          echo "Los cambios fueron hechos en la carpeta chat"
-        else
-          echo "::set-output name=changed::false"
-        fi
+      - name: Log result
+        run: |
+          echo "Folder changed: ${{ env.folder }}"
