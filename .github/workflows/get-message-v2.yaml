@@ -55,11 +55,10 @@ jobs:
 
     - name: Generate comment
       run: |
-        # Use associative array to avoid duplicate folders
         declare -A folders
         for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-          folder=$(dirname "$file")
-          if [[ "$folder" == "my-project/resources"* ]]; then
+          folder=$(basename $(dirname "$file"))
+          if [[ "$folder" =~ ^(CCO\ MS|CCO\ PS|chat)$ ]]; then
             folders["$folder"]=1
           fi
         done
