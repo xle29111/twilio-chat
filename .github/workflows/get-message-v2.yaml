@@ -1,71 +1,94 @@
-name: Generate Comment
+name: Build Deployment Message
 
 on:
   push:
-    paths:
-      - 'my-project/resources/CCO MS/**'
-      - 'my-project/resources/CCO PS/**'
-      - 'my-project/resources/chat/**'
     branches:
-      - 'feature/**'
-      - 'develop'
+      - feature/*
+      - develop
+  pull_request:
+    branches:
+      - develop
 
 jobs:
-  detect-changes:
+  build-message:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      # Paso 1: Checkout del código
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Determine changed folders
-      id: changed-files
-      uses: tj-actions/changed-files@v34
-      with:
-        files: |
-          my-project/resources/CCO MS/**
-          my-project/resources/CCO PS/**
-          my-project/resources/chat/**
+      # Paso 2: Detectar la carpeta afectada
+      - name: Detect affected folder
+        id: detect-folder
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files: $CHANGED_FILES"
 
-    - name: Get commit message or pull request title
-      id: get-message
-      run: |
-        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
-          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
-          echo "commit_message=$COMMIT_MESSAGE" >> $GITHUB_ENV
-        elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
-          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
-          echo "pr_title=$PR_TITLE" >> $GITHUB_ENV
-        fi
+          case "$CHANGED_FILES" in
+            *my-project/resources/CCO\ MS/*)
+              FOLDER="CCO MS"
+              ;;
+            *my-project/resources/CCO\ PS/*)
+              FOLDER="CCO PS"
+              ;;
+            *my-project/resources/chat/*)
+              FOLDER="chat"
+              ;;
+            *)
+              FOLDER="unknown"
+              ;;
+          esac
 
-    - name: Read package.json version
-      id: get-package-version
-      run: |
-        VERSION=$(jq -r '.version' ./my-project/package.json)
-        echo "version=$VERSION" >> $GITHUB_ENV
+          echo "Affected folder: $FOLDER"
+          echo "FOLDER=$FOLDER" >> $GITHUB_ENV
 
-    - name: Determine branch label
-      id: get-branch-label
-      run: |
-        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
-          LABEL="DEV"
-        elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
-          LABEL="ST"
-        fi
-        echo "label=$LABEL" >> $GITHUB_ENV
+      # Paso 3: Obtener el mensaje del último commit (para feature) o la descripción del PR (para develop)
+      - name: Get message based on branch
+        id: get-message
+        run: |
+          BRANCH="${{ github.ref }}"
+          case "$BRANCH" in
+            refs/heads/feature/*)
+              MESSAGE="${{ github.event.head_commit.message }}"
+              echo "Using commit message: $MESSAGE"
+              ;;
+            refs/heads/develop)
+              MESSAGE="${{ github.event.pull_request.title }}"
+              echo "Using PR description: $MESSAGE"
+              ;;
+            *)
+              echo "Unsupported branch"
+              exit 1
+              ;;
+          esac
+          echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
 
-    - name: Generate comment
-      run: |
-        declare -A folders
-        for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-          folder=$(basename $(dirname "$file"))
-          if [[ "$folder" =~ ^(CCO\ MS|CCO\ PS|chat)$ ]]; then
-            folders["$folder"]=1
-          fi
-        done
+      # Paso 4: Extraer la versión del package.json
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          VERSION=$(jq -r .version my-project/package.json)
+          echo "Package Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-        for folder in "${!folders[@]}"; do
-          MESSAGE=${{ env.commit_message }}${{ env.pr_title }}
-          COMMENT="$folder $MESSAGE ${{ env.version }} ${{ env.label }}"
-          echo $COMMENT
-        done
+      # Paso 5: Determinar la etiqueta (DEV para feature, ST para develop)
+      - name: Determine tag
+        id: determine-tag
+        run: |
+          BRANCH="${{ github.ref }}"
+          case "$BRANCH" in
+            refs/heads/feature/*)
+              TAG="DEV"
+              ;;
+            refs/heads/develop)
+              TAG="ST"
+              ;;
+            *)
+              TAG=""
+              ;;
+          esac
+          echo "Tag: $TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      # 
