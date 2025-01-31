@@ -35,13 +35,13 @@ jobs:
         elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
           PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
         fi
-        echo "::set-output name=message::${COMMIT_MESSAGE:-$PR_TITLE}"
+        echo "message=${COMMIT_MESSAGE:-$PR_TITLE}" >> $GITHUB_ENV
 
     - name: Read package.json version
       id: get-package-version
       run: |
         VERSION=$(jq -r '.version' ./my-project/package.json)
-        echo "::set-output name=version::$VERSION"
+        echo "version=$VERSION" >> $GITHUB_ENV
 
     - name: Determine branch label
       id: get-branch-label
@@ -51,7 +51,7 @@ jobs:
         elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
           LABEL="ST"
         fi
-        echo "::set-output name=label::$LABEL"
+        echo "label=$LABEL" >> $GITHUB_ENV
 
     - name: Generate comment
       run: |
@@ -64,6 +64,6 @@ jobs:
         done
 
         for folder in "${!folders[@]}"; do
-          COMMENT="$folder, ${{ steps.get-message.outputs.message }}, ${{ steps.get-package-version.outputs.version }}, ${{ steps.get-branch-label.outputs.label }}"
+          COMMENT="$folder, ${{ env.message }}, ${{ env.version }}, ${{ env.label }}"
           echo $COMMENT
         done
