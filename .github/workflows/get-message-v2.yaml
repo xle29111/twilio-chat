@@ -93,5 +93,10 @@ jobs:
           esac
           echo "Tag: $TAG"
           echo "TAG=$TAG" >> $GITHUB_ENV
+          
+      - name: Build and display full comment
+        run: |
+          FULL_COMMENT="${{ env.FOLDER }} - ${{ env.MESSAGE }} - v${{ env.VERSION }} ${{ env.TAG }}"
+          echo "Full Comment: $FULL_COMMENT"
 
       # 
