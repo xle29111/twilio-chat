@@ -1,69 +1,76 @@
-name: Generate Comment
+name: Custom Comment Pipeline
 
 on:
   push:
-    paths:
-      - 'my-project/resources/CCO MS/**'
-      - 'my-project/resources/CCO PS/**'
-      - 'my-project/resources/chat/**'
     branches:
-      - 'feature/**'
-      - 'develop'
+      - feature/**  # 🔹 Detecta cambios en ramas feature
+      - develop     # 🔹 Detecta cambios en la rama develop
 
 jobs:
-  detect-changes:
+  generate-comment:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      # Paso 1: Checkout del código
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2  # 🔹 Obtiene el commit actual y el anterior
 
-    - name: Determine changed folders
-      id: changed-files
-      uses: tj-actions/changed-files@v34
-      with:
-        files: |
-          my-project/resources/CCO MS/**
-          my-project/resources/CCO PS/**
-          my-project/resources/chat/**
+      # Paso 2: Detectar cambios en las carpetas específicas
+      - name: Detect changes in folders
+        id: detect-changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            cco_ms:
+              - 'my-project/resources/CCO MS/**'
+            cco_ps:
+              - 'my-project/resources/CCO PS/**'
+            chat:
+              - 'my-project/resources/chat/**'
 
-    - name: Get commit message or pull request title
-      id: get-message
-      run: |
-        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
-          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
-        elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
-          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
-        fi
-        echo "::set-output name=message::${COMMIT_MESSAGE:-$PR_TITLE}"
-
-    - name: Read package.json version
-      id: get-package-version
-      run: |
-        VERSION=$(jq -r '.version' ./my-project/package.json)
-        echo "::set-output name=version::$VERSION"
-
-    - name: Determine branch label
-      id: get-branch-label
-      run: |
-        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
-          LABEL="DEV"
-        elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
-          LABEL="ST"
-        fi
-        echo "::set-output name=label::$LABEL"
-
-    - name: Generate comment
-      run: |
-        declare -A folders
-        for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-          folder=$(basename $(dirname "$file"))
-          if [[ "$folder" =~ ^(CCO\ MS|CCO\ PS|chat)$ ]]; then
-            folders["$folder"]=1
+      # Paso 3: Obtener el mensaje del último commit o el título del PR
+      - name: Get commit message or PR title
+        id: get-message
+        run: |
+          if [[ $GITHUB_REF == refs/heads/feature/* ]]; then
+            # Si es una rama feature, obtener el mensaje del último commit
+            MESSAGE=$(git log -1 --pretty=%B)
+          elif [[ $GITHUB_REF == refs/heads/develop ]]; then
+            # Si es la rama develop, obtener el título del PR
+            PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+            MESSAGE=$(gh pr view $PR_NUMBER --json title --jq '.title')
           fi
-        done
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
 
-        for folder in "${!folders[@]}"; do
-          COMMENT="Folder: $folder, Message: ${{ steps.get-message.outputs.message }}, Version: ${{ steps.get-package-version.outputs.version }}, Label: ${{ steps.get-branch-label.outputs.label }}"
-          echo $COMMENT
-        done
+      # Paso 4: Obtener la versión del archivo package.json
+      - name: Get package.json version
+        id: get-version
+        run: |
+          VERSION=$(jq -r .version my-project/package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # Paso 5: Determinar la etiqueta (DEV o ST)
+      - name: Determine tag
+        id: determine-tag
+        run: |
+          if [[ $GITHUB_REF == refs/heads/feature/* ]]; then
+            TAG="DEV"
+          elif [[ $GITHUB_REF == refs/heads/develop ]]; then
+            TAG="ST"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      # Paso 6: Mostrar el comentario en la consola
+      - name: Print custom comment
+        run: |
+          if [[ ${{ steps.detect-changes.outputs.cco_ms }} == 'true' ]]; then
+            echo "CCO MS + ${{ steps.get-message.outputs.message }} + ${{ steps.get-version.outputs.version }} + ${{ steps.determine-tag.outputs.tag }}"
+          fi
+          if [[ ${{ steps.detect-changes.outputs.cco_ps }} == 'true' ]]; then
+            echo "CCO PS + ${{ steps.get-message.outputs.message }} + ${{ steps.get-version.outputs.version }} + ${{ steps.determine-tag.outputs.tag }}"
+          fi
+          if [[ ${{ steps.detect-changes.outputs.chat }} == 'true' ]]; then
+            echo "Chat + ${{ steps.get-message.outputs.message }} + ${{ steps.get-version.outputs.version }} + ${{ steps.determine-tag.outputs.tag }}"
+          fi
