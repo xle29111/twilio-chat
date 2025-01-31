@@ -1,0 +1,83 @@
+name: Build Deployment Message
+
+on:
+  push:
+    branches:
+      - feature/*
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Checkout del código
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Paso 2: Detectar la carpeta afectada
+      - name: Detect affected folder
+        id: detect-folder
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files: $CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | grep -q '^my-project/resources/CCO MS/'; then
+            FOLDER="CCO MS"
+          elif echo "$CHANGED_FILES" | grep -q '^my-project/resources/CCO PS/'; then
+            FOLDER="CCO PS"
+          elif echo "$CHANGED_FILES" | grep -q '^my-project/resources/chat/'; then
+            FOLDER="chat"
+          else
+            FOLDER="unknown"
+          fi
+
+          echo "Affected folder: $FOLDER"
+          echo "FOLDER=$FOLDER" >> $GITHUB_ENV
+
+      # Paso 3: Obtener el mensaje del último commit (para feature) o la descripción del PR (para develop)
+      - name: Get message based on branch
+        id: get-message
+        run: |
+          if [[ "${{ github.ref }}" == refs/heads/feature/* ]]; then
+            MESSAGE="${{ github.event.head_commit.message }}"
+            echo "Using commit message: $MESSAGE"
+          elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
+            MESSAGE="${{ github.event.pull_request.title }}"
+            echo "Using PR description: $MESSAGE"
+          else
+            echo "Unsupported branch"
+            exit 1
+          fi
+          echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
+
+      # Paso 4: Extraer la versión del package.json
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          VERSION=$(jq -r .version my-project/package.json)
+          echo "Package Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      # Paso 5: Determinar la etiqueta (DEV para feature, ST para develop)
+      - name: Determine tag
+        id: determine-tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/heads/feature/* ]]; then
+            TAG="DEV"
+          elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
+            TAG="ST"
+          else
+            TAG=""
+          fi
+          echo "Tag: $TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      # Paso 6: Construir el mensaje completo y mostrarlo por consola
+      - name: Build and display full message
+        run: |
+          FULL_MESSAGE="${{ env.FOLDER }} - ${{ env.MESSAGE }} - v${{ env.VERSION }} ${{ env.TAG }}"
+          echo "Full Message: $FULL_MESSAGE"
