@@ -64,6 +64,6 @@ jobs:
         done
 
         for folder in "${!folders[@]}"; do
-          COMMENT="Folder: $folder, Message: ${{ steps.get-message.outputs.message }}, Version: ${{ steps.get-package-version.outputs.version }}, Label: ${{ steps.get-branch-label.outputs.label }}"
+          COMMENT="$folder, ${{ steps.get-message.outputs.message }}, ${{ steps.get-package-version.outputs.version }}, ${{ steps.get-branch-label.outputs.label }}"
           echo $COMMENT
         done
