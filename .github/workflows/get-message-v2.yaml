@@ -1,83 +1,61 @@
-name: Build Deployment Message
+name: Generate Comment
 
 on:
   push:
+    paths:
+      - 'my-project/resources/CCO MS/**'
+      - 'my-project/resources/CCO PS/**'
+      - 'my-project/resources/chat/**'
     branches:
-      - feature/*
-      - develop
-  pull_request:
-    branches:
-      - develop
+      - 'feature/**'
+      - 'develop'
 
 jobs:
-  build-message:
+  detect-changes:
     runs-on: ubuntu-latest
 
     steps:
-      # Paso 1: Checkout del código
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      # Paso 2: Detectar la carpeta afectada
-      - name: Detect affected folder
-        id: detect-folder
-        run: |
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-          echo "Changed files: $CHANGED_FILES"
+    - name: Determine changed folders
+      id: changed-files
+      uses: tj-actions/changed-files@v34
+      with:
+        files: |
+          my-project/resources/CCO MS
+          my-project/resources/CCO PS
+          my-project/resources/chat
 
-          if echo "$CHANGED_FILES" | grep -q '^my-project/resources/CCO MS/'; then
-            FOLDER="CCO MS"
-          elif echo "$CHANGED_FILES" | grep -q '^my-project/resources/CCO PS/'; then
-            FOLDER="CCO PS"
-          elif echo "$CHANGED_FILES" | grep -q '^my-project/resources/chat/'; then
-            FOLDER="chat"
-          else
-            FOLDER="unknown"
-          fi
+    - name: Get commit message or pull request title
+      id: get-message
+      run: |
+        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+        elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
+          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
+        fi
+        echo "::set-output name=message::${COMMIT_MESSAGE:-$PR_TITLE}"
 
-          echo "Affected folder: $FOLDER"
-          echo "FOLDER=$FOLDER" >> $GITHUB_ENV
+    - name: Read package.json version
+      id: get-package-version
+      run: |
+        VERSION=$(jq -r '.version' ./my-project/package.json)
+        echo "::set-output name=version::$VERSION"
 
-      # Paso 3: Obtener el mensaje del último commit (para feature) o la descripción del PR (para develop)
-      - name: Get message based on branch
-        id: get-message
-        run: |
-          if [[ "${{ github.ref }}" == refs/heads/feature/* ]]; then
-            MESSAGE="${{ github.event.head_commit.message }}"
-            echo "Using commit message: $MESSAGE"
-          elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
-            MESSAGE="${{ github.event.pull_request.title }}"
-            echo "Using PR description: $MESSAGE"
-          else
-            echo "Unsupported branch"
-            exit 1
-          fi
-          echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
+    - name: Determine branch label
+      id: get-branch-label
+      run: |
+        if [[ "${GITHUB_REF}" == refs/heads/feature/* ]]; then
+          LABEL="DEV"
+        elif [[ "${GITHUB_REF}" == refs/heads/develop ]]; then
+          LABEL="ST"
+        fi
+        echo "::set-output name=label::$LABEL"
 
-      # Paso 4: Extraer la versión del package.json
-      - name: Get version from package.json
-        id: package-version
-        run: |
-          VERSION=$(jq -r .version my-project/package.json)
-          echo "Package Version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      # Paso 5: Determinar la etiqueta (DEV para feature, ST para develop)
-      - name: Determine tag
-        id: determine-tag
-        run: |
-          if [[ "${{ github.ref }}" == refs/heads/feature/* ]]; then
-            TAG="DEV"
-          elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
-            TAG="ST"
-          else
-            TAG=""
-          fi
-          echo "Tag: $TAG"
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
-      # Paso 6: Construir el mensaje completo y mostrarlo por consola
-      - name: Build and display full message
-        run: |
-          FULL_MESSAGE="${{ env.FOLDER }} - ${{ env.MESSAGE }} - v${{ env.VERSION }} ${{ env.TAG }}"
-          echo "Full Message: $FULL_MESSAGE"
+    - name: Generate comment
+      run: |
+        for folder in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          COMMENT="Folder: $folder, Message: ${{ steps.get-message.outputs.message }}, Version: ${{ steps.get-package-version.outputs.version }}, Label: ${{ steps.get-branch-label.outputs.label }}"
+          echo $COMMENT
+        done
