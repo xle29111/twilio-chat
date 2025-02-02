@@ -3,7 +3,7 @@ name: Detecting Folder Changes
 on:
   push:
     branches:
-      -  feature/event-folders
+      - 'feature/event-folders'
     paths:
       - 'resources/**'  # 🔹 Detecta cambios en cualquier carpeta dentro de /resources
 
