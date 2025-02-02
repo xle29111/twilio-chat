@@ -3,7 +3,7 @@ name: Feature Pipeline
 on:
   push:
     branches:
-      - feature  # Escucha cambios en la rama feature
+      - feature/event-folders  # Escucha cambios en la rama feature
     paths:
       - 'my-project/resources/**'  # Detecta cambios en las carpetas de resources
 
