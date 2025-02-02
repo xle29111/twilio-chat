@@ -1,70 +1,125 @@
-name: Feature Pipeline
+name: Detecting Folder Changes
 
 on:
   push:
     branches:
-      - feature/event-folders  # Escucha cambios en la rama feature
+      -  feature/event-folders
     paths:
-      - 'my-project/resources/**'  # Detecta cambios en las carpetas de resources
+      - 'resources/**'  # 🔹 Detecta cambios en cualquier carpeta dentro de /resources
 
 jobs:
-  detect-and-deploy:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-latest  # 🔹 Usa el runner especificado
+    environment: develop  # 🔹 Usa el environment "develop"
 
     steps:
       # Paso 1: Checkout del código
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 2  # Obtiene el commit actual y el anterior
+          fetch-depth: 2  # 🔹 Obtiene el commit actual y el anterior
 
-      # Paso 2: Detectar cambios en las carpetas de resources
-      - name: Detect changes in resources
-        id: detect-changes
+
+      # Paso 6: Detectar cambios y ejecutar los comandos de despliegue correspondientes
+      - name: Detect Changes and Deploy
         run: |
           # Obtener la lista de archivos modificados entre el commit anterior y el actual
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
 
-          # Crear un archivo para guardar las carpetas afectadas
-          echo "Carpetas afectadas:" > changed_folders.txt
-
-          # Iterar sobre las carpetas de resources y detectar cambios
-          for FOLDER in my-project/resources/chat my-project/resources/CCO_PS my-project/resources/CCO_MS; do
-            if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
-              echo "$FOLDER" >> changed_folders.txt
-            fi
-          done
-
-          # Mostrar el contenido del archivo (para debugging)
-          cat changed_folders.txt
-
-      # Paso 3: Publicar el archivo como un artefacto (usando v4)
-      - name: Upload changed folders
-        uses: actions/upload-artifact@v4  # Actualizado a v4
-        with:
-          name: changed_folders
-          path: changed_folders.txt
-
-      # Paso 4: Desplegar según las carpetas afectadas (corregido)
-      - name: Deploy based on changes
-        run: |
-          # Leer el archivo de carpetas afectadas
-          CHANGED_FOLDERS=$(cat changed_folders.txt)
-
-          # Función para desplegar según la carpeta
+          # Función para ejecutar el comando de despliegue según la carpeta
           deploy_folder() {
             case $1 in
-              "my-project/resources/chat")
+              "resources/chat")
                 echo "Desplegando Chat..."
                 npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
-              "my-project/resources/CCO_PS")
+              "resources/CCO MS")
+                echo "Desplegando CCO MS..."
+                npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/CCO PS")
                 echo "Desplegando CCO PS..."
                 npm run deploy:cco-ps -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
-              "my-project/resources/CCO_MS")
-                echo "Desplegando CCO MS..."
-                npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+              "resources/CCO_Progressive_Testing_Flow_Multilingual")
+                echo "Desplegando CCO Progressive Testing..."
+                npm run deploy:cco-progressive-testing -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/Declined Payment")
+                echo "Desplegando Declined Payment..."
+                npm run deploy:declined-payment -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/training")
+                echo "Desplegando Training..."
+                npm run deploy:training -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/campaign-FSA")
+                echo "Desplegando Campaign FSA..."
+                npm run deploy:campaign-fsa -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/timebank")
+                echo "Desplegando Timebank..."
+                npm run deploy:timebank -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/CCO_Preview_Testing_Flow_Multilingual")
+                echo "Desplegando CCO Preview Testing..."
+                npm run deploy:cco-preview-testing -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/CCO RCC Payment")
+                echo "Desplegando CCO RCC Payment..."
+                npm run deploy:cco-rcc-payment -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/IT Service Desk")
+                echo "Desplegando IT Service Desk..."
+                npm run deploy:it-service-desk -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/IT Service Desk Chat")
+                echo "Desplegando IT Service Desk Chat..."
+                npm run deploy:it-service-desk-chat -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/MLTC")
+                echo "Desplegando MLTC..."
+                npm run deploy:mltc -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/BH-PCP")
+                echo "Desplegando BH-PCP..."
+                npm run deploy:bh-pcp -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/Direct Inward Dial")
+                echo "Desplegando Direct Inward Dial..."
+                npm run deploy:direct-inward-dial -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/CE Welcome Team")
+                echo "Desplegando CE Welcome Team..."
+                npm run deploy:ce-welcome -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/Clinical BH Inbound")
+                echo "Desplegando Clinical BH Inbound..."
+                npm run deploy:clinical-bh-inbound -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/Pharmacy MedConnect Inbound")
+                echo "Desplegando Pharmacy MedConnect Inbound..."
+                npm run deploy:pharmacy-medconnect-inbound -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/Pharmacy_MCR_Pharmacist_Outreach_Inbound_Flow")
+                echo "Desplegando Pharmacy MCR Outreach..."
+                npm run deploy:pharmacy-mcr-outreach -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/QHP Binder Payments")
+                echo "Desplegando QHP Binder Payments..."
+                npm run deploy:qhp-binder-payments -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/LTC Campaign")
+                echo "Desplegando LTC Campaign..."
+                npm run deploy:ltc-campaign -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/SDOH Campaign")
+                echo "Desplegando SDOH Campaign..."
+                npm run deploy:sdoh-campaign -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "resources/Outbound Calls")
+                echo "Desplegando Outbound Calls..."
+                npm run deploy:outbound-calls -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               *)
                 echo "No se detectaron cambios relevantes en la carpeta: $1"
@@ -72,10 +127,9 @@ jobs:
             esac
           }
 
-          # Iterar sobre las carpetas afectadas y desplegar
-          while IFS= read -r FOLDER; do
-            if [[ "$FOLDER" == "Carpetas afectadas:" ]]; then
-              continue  # Saltar la línea de encabezado
+          # Iterar sobre las carpetas y ejecutar el comando de despliegue correspondiente
+          for FOLDER in resources/chat resources/CCO\ MS resources/CCO\ PS resources/CCO_Progressive_Testing_Flow_Multilingual resources/Declined\ Payment resources/training resources/campaign-FSA resources/timebank resources/CCO_Preview_Testing_Flow_Multilingual resources/CCO\ RCC\ Payment resources/IT\ Service\ Desk resources/IT\ Service\ Desk\ Chat resources/MLTC resources/BH-PCP resources/Direct\ Inward\ Dial resources/CE\ Welcome\ Team resources/Clinical\ BH\ Inbound resources/Pharmacy\ MedConnect\ Inbound resources/Pharmacy_MCR_Pharmacist_Outreach_Inbound_Flow resources/QHP\ Binder\ Payments resources/LTC\ Campaign resources/SDOH\ Campaign resources/Outbound\ Calls; do
+            if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
+              deploy_folder "$FOLDER"
             fi
-            deploy_folder "$FOLDER"
-          done <<< "$CHANGED_FOLDERS"
+          done
