@@ -40,7 +40,7 @@ jobs:
 
       # Paso 3: Publicar el archivo como un artefacto
       - name: Upload changed folders
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: changed_folders
           path: changed_folders.txt
