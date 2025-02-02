@@ -3,7 +3,7 @@ name: Feature Pipeline
 on:
   push:
     branches:
-      - feature/event-folders  # Escucha cambios en la rama feature
+      - feature  # Escucha cambios en la rama feature
     paths:
       - 'my-project/resources/**'  # Detecta cambios en las carpetas de resources
 
@@ -38,14 +38,14 @@ jobs:
           # Mostrar el contenido del archivo (para debugging)
           cat changed_folders.txt
 
-      # Paso 3: Publicar el archivo como un artefacto
+      # Paso 3: Publicar el archivo como un artefacto (usando v4)
       - name: Upload changed folders
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # Actualizado a v4
         with:
           name: changed_folders
           path: changed_folders.txt
 
-      # Paso 4: Desplegar según las carpetas afectadas
+      # Paso 4: Desplegar según las carpetas afectadas (corregido)
       - name: Deploy based on changes
         run: |
           # Leer el archivo de carpetas afectadas
@@ -56,15 +56,15 @@ jobs:
             case $1 in
               "my-project/resources/chat")
                 echo "Desplegando Chat..."
-                #npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
+                npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO_PS")
                 echo "Desplegando CCO PS..."
-                "npm run deploy:cco-ps -- --c "[B-389745] testing cicd" --skip-confirmation
+                npm run deploy:cco-ps -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO_MS")
                 echo "Desplegando CCO MS..."
-                #npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               *)
                 echo "No se detectaron cambios relevantes en la carpeta: $1"
