@@ -1,150 +1,136 @@
-name: Manual Deployment Workflow
+name: Main Pipeline
 
 on:
-  workflow_dispatch:  # Permite ejecutar manualmente el pipeline
-    inputs:
-      branch:
-        description: 'Branch to checkout (default: main)'
-        required: false
-        default: 'main'
+  workflow_dispatch:  # Se activa manualmente
 
 jobs:
-  detect-and-deploy:
-    runs-on: ubuntu-latest  # 🔹 Usa el runner especificado
-    environment: develop  # 🔹 Usa el environment "develop"
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production  # 🔹 Usa el environment "production"
 
     steps:
       # Paso 1: Checkout del código
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.branch }}
-          fetch-depth: 2  # 🔹 Obtiene el historial necesario para el diff
 
-      # Paso 2: Descargar artefacto de carpetas afectadas
-      - name: Download Changed Folders Artifact
+      # Paso 2: Descargar el artefacto de la rama feature
+      - name: Download Changed Folders File
         uses: actions/download-artifact@v4
         with:
           name: changed_folders
-          path: .  # Guardar el artefacto en el directorio actual
+          path: .
 
-      # Paso 3: Leer artefacto y ejecutar comandos de despliegue
+      # Paso 3: Leer el archivo de carpetas afectadas y ejecutar los comandos de despliegue
       - name: Deploy Based on Changes
         run: |
-          # Leer el archivo descargado
-          if [ ! -f "changed_folders.txt" ]; then
-            echo "El archivo 'changed_folders.txt' no existe. Nada que desplegar."
-            exit 0
-          fi
-
+          # Leer el archivo de carpetas afectadas
           CHANGED_FOLDERS=$(cat changed_folders.txt)
-          echo "Carpetas afectadas detectadas:"
-          echo "$CHANGED_FOLDERS"
 
-          # Función para ejecutar el despliegue según la carpeta
+          # Función para ejecutar el comando de despliegue según la carpeta
           deploy_folder() {
             case $1 in
               "my-project/resources/chat")
                 echo "Desplegando Chat..."
-                npm run deploy:chat -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO MS")
                 echo "Desplegando CCO MS..."
-                npm run deploy:cco-ms -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO PS")
                 echo "Desplegando CCO PS..."
-                npm run deploy:cco-ps -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:cco-ps -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO_Progressive_Testing_Flow_Multilingual")
                 echo "Desplegando CCO Progressive Testing..."
-                npm run deploy:cco-progressive-testing -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:cco-progressive-testing -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/Declined Payment")
                 echo "Desplegando Declined Payment..."
-                npm run deploy:declined-payment -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:declined-payment -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/training")
                 echo "Desplegando Training..."
-                npm run deploy:training -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:training -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/campaign-FSA")
                 echo "Desplegando Campaign FSA..."
-                npm run deploy:campaign-fsa -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:campaign-fsa -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/timebank")
                 echo "Desplegando Timebank..."
-                npm run deploy:timebank -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:timebank -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO_Preview_Testing_Flow_Multilingual")
                 echo "Desplegando CCO Preview Testing..."
-                npm run deploy:cco-preview-testing -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:cco-preview-testing -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CCO RCC Payment")
                 echo "Desplegando CCO RCC Payment..."
-                npm run deploy:cco-rcc-payment -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:cco-rcc-payment -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/IT Service Desk")
                 echo "Desplegando IT Service Desk..."
-                npm run deploy:it-service-desk -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:it-service-desk -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/IT Service Desk Chat")
                 echo "Desplegando IT Service Desk Chat..."
-                npm run deploy:it-service-desk-chat -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:it-service-desk-chat -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/MLTC")
                 echo "Desplegando MLTC..."
-                npm run deploy:mltc -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:mltc -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/BH-PCP")
                 echo "Desplegando BH-PCP..."
-                npm run deploy:bh-pcp -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:bh-pcp -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/Direct Inward Dial")
                 echo "Desplegando Direct Inward Dial..."
-                npm run deploy:direct-inward-dial -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:direct-inward-dial -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/CE Welcome Team")
                 echo "Desplegando CE Welcome Team..."
-                npm run deploy:ce-welcome -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:ce-welcome -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/Clinical BH Inbound")
                 echo "Desplegando Clinical BH Inbound..."
-                npm run deploy:clinical-bh-inbound -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:clinical-bh-inbound -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/Pharmacy MedConnect Inbound")
                 echo "Desplegando Pharmacy MedConnect Inbound..."
-                npm run deploy:pharmacy-medconnect-inbound -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:pharmacy-medconnect-inbound -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/Pharmacy_MCR_Pharmacist_Outreach_Inbound_Flow")
                 echo "Desplegando Pharmacy MCR Outreach..."
-                npm run deploy:pharmacy-mcr-outreach -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:pharmacy-mcr-outreach -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/QHP Binder Payments")
                 echo "Desplegando QHP Binder Payments..."
-                npm run deploy:qhp-binder-payments -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:qhp-binder-payments -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/LTC Campaign")
                 echo "Desplegando LTC Campaign..."
-                npm run deploy:ltc-campaign -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:ltc-campaign -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/SDOH Campaign")
                 echo "Desplegando SDOH Campaign..."
-                npm run deploy:sdoh-campaign -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:sdoh-campaign -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               "my-project/resources/Outbound Calls")
                 echo "Desplegando Outbound Calls..."
-                npm run deploy:outbound-calls -- --c "[Manual Deployment] testing" --skip-confirmation
+                npm run deploy:outbound-calls -- --c "[B-389745] testing cicd" --skip-confirmation
                 ;;
               *)
-                echo "No se detectaron comandos específicos para la carpeta: $1"
+                echo "No se detectaron cambios relevantes en la carpeta: $1"
                 ;;
             esac
           }
 
-          # Iterar sobre las carpetas afectadas y ejecutar los comandos correspondientes
+          # Iterar sobre las carpetas afectadas y ejecutar el comando de despliegue correspondiente
           while IFS= read -r FOLDER; do
-            if [[ -n "$FOLDER" ]]; then
-              deploy_folder "$FOLDER"
+            if [[ "$FOLDER" == "Carpetas afectadas:" ]]; then
+              continue  # Saltar la línea de encabezado
             fi
+            deploy_folder "$FOLDER"
           done <<< "$CHANGED_FOLDERS"
