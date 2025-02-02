@@ -13,13 +13,13 @@ jobs:
   build-message:
     runs-on: ubuntu-latest
 
+    outputs:
+      full-comment: ${{ steps.build-comment.outputs.full_comment }}
+
     steps:
       # Paso 1: Checkout del código
       - name: Checkout code
         uses: actions/checkout@v3
-      
-      - name: Fetch full history for diff
-        run: git fetch --unshallow
 
       # Paso 2: Detectar la carpeta afectada
       - name: Detect affected folder
@@ -93,10 +93,11 @@ jobs:
           esac
           echo "Tag: $TAG"
           echo "TAG=$TAG" >> $GITHUB_ENV
-          
-      - name: Build and display full comment
+
+      # Paso 6: Construir el comentario completo y exponerlo como output
+      - name: Build and export full comment
+        id: build-comment
         run: |
           FULL_COMMENT="${{ env.FOLDER }} - ${{ env.MESSAGE }} - v${{ env.VERSION }} ${{ env.TAG }}"
           echo "Full Comment: $FULL_COMMENT"
-
-      # 
+          echo "::set-output name=full_comment::$FULL_COMMENT"

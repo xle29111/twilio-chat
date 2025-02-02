@@ -1,0 +1,81 @@
+name: Feature Pipeline
+
+on:
+  push:
+    branches:
+      - feature  # Escucha cambios en la rama feature
+    paths:
+      - 'my-project/resources/**'  # Detecta cambios en las carpetas de resources
+
+jobs:
+  detect-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Checkout del código
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2  # Obtiene el commit actual y el anterior
+
+      # Paso 2: Detectar cambios en las carpetas de resources
+      - name: Detect changes in resources
+        id: detect-changes
+        run: |
+          # Obtener la lista de archivos modificados entre el commit anterior y el actual
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+
+          # Crear un archivo para guardar las carpetas afectadas
+          echo "Carpetas afectadas:" > changed_folders.txt
+
+          # Iterar sobre las carpetas de resources y detectar cambios
+          for FOLDER in my-project/resources/chat my-project/resources/CCO_PS my-project/resources/CCO_MS; do
+            if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
+              echo "$FOLDER" >> changed_folders.txt
+            fi
+          done
+
+          # Mostrar el contenido del archivo (para debugging)
+          cat changed_folders.txt
+
+      # Paso 3: Publicar el archivo como un artefacto
+      - name: Upload changed folders
+        uses: actions/upload-artifact@v3
+        with:
+          name: changed_folders
+          path: changed_folders.txt
+
+      # Paso 4: Desplegar según las carpetas afectadas
+      - name: Deploy based on changes
+        run: |
+          # Leer el archivo de carpetas afectadas
+          CHANGED_FOLDERS=$(cat changed_folders.txt)
+
+          # Función para desplegar según la carpeta
+          deploy_folder() {
+            case $1 in
+              "my-project/resources/chat")
+                echo "Desplegando Chat..."
+                #npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "my-project/resources/CCO_PS")
+                echo "Desplegando CCO PS..."
+                "npm run deploy:cco-ps -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              "my-project/resources/CCO_MS")
+                echo "Desplegando CCO MS..."
+                #npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                ;;
+              *)
+                echo "No se detectaron cambios relevantes en la carpeta: $1"
+                ;;
+            esac
+          }
+
+          # Iterar sobre las carpetas afectadas y desplegar
+          while IFS= read -r FOLDER; do
+            if [[ "$FOLDER" == "Carpetas afectadas:" ]]; then
+              continue  # Saltar la línea de encabezado
+            fi
+            deploy_folder "$FOLDER"
+          done <<< "$CHANGED_FOLDERS"
