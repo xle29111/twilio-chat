@@ -34,7 +34,7 @@ jobs:
           done
 
           # Mostrar el contenido del archivo (para debugging)
-          cat changed_folders.txt
+          cat my-project/changed_folders.txt
 
       # Paso 3: Configurar identidad de git
       - name: Configure Git identity
