@@ -39,7 +39,13 @@ jobs:
           # Mostrar el contenido del archivo (para debugging)
           cat my-project/changed_folders.txt
 
-      # Paso 3: Hacer commit del archivo changed_folders.txt
+      # Paso 3: Configurar la identidad del autor de Git
+      - name: Set Git Identity
+        run: |
+          git config --global user.email "xavier.encarnacion@example.com"
+          git config --global user.name "Xavier Encarnacion"
+
+      # Paso 4: Hacer commit del archivo changed_folders.txt
       - name: Commit Changed Folders File
         run: |
           # Agregar el archivo changed_folders.txt al área de staging
@@ -51,7 +57,7 @@ jobs:
           # Realizar push a la misma rama
           git push origin feature/event-folders
 
-      # Paso 4: Ejecutar los comandos de despliegue correspondientes (comentados)
+      # Paso 5: Ejecutar los comandos de despliegue correspondientes (comentados)
       - name: Deploy Based on Changes
         run: |
           # Leer el archivo de carpetas afectadas
