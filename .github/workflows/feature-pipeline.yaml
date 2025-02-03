@@ -10,7 +10,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest  # 🔹 Usa el runner especificado
-    #environment: develop  # 🔹 Usa el environment "develop"
+    environment: develop  # 🔹 Usa el environment "develop"
 
     steps:
       # Paso 1: Checkout del código
@@ -54,7 +54,7 @@ jobs:
       - name: Push Changes to Repository
         run: |
           # Hacer push del archivo committeado usando el token de GitHub
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/xle29111/twilio-chat.git HEAD:feature/event-folders
+          git push https://xle29111:${{ secrets.TOKEN }}@github.com/xle29111/twilio-chat.git feature/event-folders
 
       # Paso 6: Ejecutar los comandos de despliegue correspondientes (comentados)
       - name: Deploy Based on Changes
