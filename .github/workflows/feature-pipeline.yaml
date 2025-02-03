@@ -46,9 +46,9 @@ jobs:
       - name: Commit Changed Folders File
         run: |
           # Agregar el archivo changed_folders.txt al área de staging
-          git checkout feature/event-folders
-          git add my-project/changed_folders.txt
-          git commit -m "Agregar archivo changed_folders.txt con las carpetas afectadas por cambios"
+          #git checkout feature/event-folders
+          #git add my-project/changed_folders.txt
+          #git commit -m "Agregar archivo changed_folders.txt con las carpetas afectadas por cambios"
 
       # Paso 5: Realizar push con el token de GitHub
       - name: Push Changes to Repository
@@ -56,12 +56,6 @@ jobs:
           # Hacer push del archivo committeado usando el token de GitHub
           #git push https://xle29111:${{ secrets.TOKEN }}@github.com/xle29111/twilio-chat.git HEAD:feature/event-folders
 
-       # Paso 6: Aprobación manual para continuar con el despliegue
-      - name: Wait for Manual Approval
-        uses: peter-evans/manual-approval-action@v2
-        with:
-          approvers: 'xavier.encarnacion@github.com'
-          approval_type: 'all'  # Puede ser "any" o "all" según 
 
       # Paso 6: Ejecutar los comandos de despliegue correspondientes (comentados)
       - name: Deploy Based on Changes
