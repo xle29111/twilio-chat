@@ -58,7 +58,7 @@ jobs:
 
        # Paso 6: Aprobación manual para continuar con el despliegue
       - name: Wait for Manual Approval
-        uses: peter-evans/manual-approval@v2
+        uses: peter-evans/manual-approval-action@v2
         with:
           approvers: 'xavier.encarnacion@github.com'
           approval_type: 'all'  # Puede ser "any" o "all" según 
