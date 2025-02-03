@@ -26,42 +26,40 @@ jobs:
           # Obtener la lista de archivos modificados entre el commit anterior y el actual
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
 
-          # Crear el archivo changed_folders.txt dentro de 'my-project'
-          echo "Carpetas afectadas:" > my-project/changed_folders.txt
-
-          # Iterar sobre las carpetas de resources y detectar cambios
+          # Crear un archivo para guardar las carpetas afectadas
           for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS my-project/resources/CCO_Progressive_Testing_Flow_Multilingual my-project/resources/Declined\ Payment my-project/resources/training my-project/resources/campaign-FSA my-project/resources/timebank my-project/resources/CCO_Preview_Testing_Flow_Multilingual my-project/resources/CCO\ RCC\ Payment my-project/resources/IT\ Service\ Desk my-project/resources/IT\ Service\ Desk\ Chat my-project/resources/MLTC my-project/resources/BH-PCP my-project/resources/Direct\ Inward\ Dial my-project/resources/CE\ Welcome\ Team my-project/resources/Clinical\ BH\ Inbound my-project/resources/Pharmacy\ MedConnect\ Inbound my-project/resources/Pharmacy_MCR_Pharmacist_Outreach_Inbound_Flow my-project/resources/QHP\ Binder\ Payments my-project/resources/LTC\ Campaign my-project/resources/SDOH\ Campaign my-project/resources/Outbound\ Calls; do
             if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
-              echo "$FOLDER" >> my-project/changed_folders.txt
+              echo "$FOLDER" >> changed_folders.txt
             fi
           done
 
           # Mostrar el contenido del archivo (para debugging)
-          cat my-project/changed_folders.txt
+          cat changed_folders.txt
 
-      # Paso 3: Configurar la identidad del autor de Git
-      - name: Set Git Identity
+      # Paso 3: Configurar identidad de git
+      - name: Configure Git identity
         run: |
-          git config --global user.email "xavier.encarnacion@example.com"
           git config --global user.name "Xavier Encarnacion"
+          git config --global user.email "xavier.encarnacion@github.com"
 
-      # Paso 4: Hacer commit del archivo changed_folders.txt
+      # Paso 4: Agregar y hacer commit del archivo changed_folders.txt
       - name: Commit Changed Folders File
         run: |
           # Agregar el archivo changed_folders.txt al área de staging
           git add my-project/changed_folders.txt
-
-          # Hacer commit con un mensaje que indique que se está registrando la lista de carpetas afectadas
           git commit -m "Agregar archivo changed_folders.txt con las carpetas afectadas por cambios"
 
-          # Realizar push a la misma rama
-          git push origin feature/event-folders
+      # Paso 5: Realizar push con el token de GitHub
+      - name: Push Changes to Repository
+        run: |
+          # Hacer push del archivo committeado usando el token de GitHub
+          git push https://x-access-token:${{ secrets.TOKEN }}@github.com/xle29111/twilio-chat.git HEAD:feature/event-folders
 
-      # Paso 5: Ejecutar los comandos de despliegue correspondientes (comentados)
+      # Paso 6: Ejecutar los comandos de despliegue correspondientes (comentados)
       - name: Deploy Based on Changes
         run: |
           # Leer el archivo de carpetas afectadas
-          CHANGED_FOLDERS=$(cat my-project/changed_folders.txt)
+          CHANGED_FOLDERS=$(cat changed_folders.txt)
 
           # Función para ejecutar el comando de despliegue según la carpeta
           deploy_folder() {
