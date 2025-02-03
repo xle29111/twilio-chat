@@ -46,6 +46,7 @@ jobs:
       - name: Commit Changed Folders File
         run: |
           # Agregar el archivo changed_folders.txt al área de staging
+          git checkout feature/event-folders
           git add my-project/changed_folders.txt
           git commit -m "Agregar archivo changed_folders.txt con las carpetas afectadas por cambios"
 
