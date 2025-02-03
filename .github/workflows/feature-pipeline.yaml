@@ -29,7 +29,7 @@ jobs:
           # Crear un archivo para guardar las carpetas afectadas
           for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS my-project/resources/CCO_Progressive_Testing_Flow_Multilingual my-project/resources/Declined\ Payment my-project/resources/training my-project/resources/campaign-FSA my-project/resources/timebank my-project/resources/CCO_Preview_Testing_Flow_Multilingual my-project/resources/CCO\ RCC\ Payment my-project/resources/IT\ Service\ Desk my-project/resources/IT\ Service\ Desk\ Chat my-project/resources/MLTC my-project/resources/BH-PCP my-project/resources/Direct\ Inward\ Dial my-project/resources/CE\ Welcome\ Team my-project/resources/Clinical\ BH\ Inbound my-project/resources/Pharmacy\ MedConnect\ Inbound my-project/resources/Pharmacy_MCR_Pharmacist_Outreach_Inbound_Flow my-project/resources/QHP\ Binder\ Payments my-project/resources/LTC\ Campaign my-project/resources/SDOH\ Campaign my-project/resources/Outbound\ Calls; do
             if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
-              echo "$FOLDER" >> changed_folders.txt
+              echo "$FOLDER" >> my-project/changed_folders.txt
             fi
           done
 
