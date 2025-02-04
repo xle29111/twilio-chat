@@ -10,13 +10,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
-      - name: Wait for manual approval
-        uses: peter-evans/workflow-dispatch@v1
-        with:
-          environment: production
-
       - name: Checkout Code
         uses: actions/checkout@v3
 
