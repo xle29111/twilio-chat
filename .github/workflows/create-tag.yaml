@@ -1,0 +1,33 @@
+name: Create Annotated Tag
+
+on:
+  push:
+    branches:
+      - feature/event-folders  # Trigger the workflow on push to the feature/event-folders branch
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+
+    - name: Set up Git
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+
+    - name: Create annotated tag
+      run: |
+        # Get the current commit SHA of the feature/event-folders branch
+        COMMIT_SHA=$(git rev-parse HEAD)
+        
+        # Create an annotated tag
+        git tag -a v1.0.0 -m "Annotated tag for feature/event-folders" $COMMIT_SHA
+
+    - name: Push the tag
+      run: |
+        git push origin v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use the GitHub token for authentication
