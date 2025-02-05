@@ -1,4 +1,4 @@
-name: Create Annotated Tag
+name: Create Annotated Tag 
 
 on:
   push:
