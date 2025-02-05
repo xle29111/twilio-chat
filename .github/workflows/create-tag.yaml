@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Necesario para obtener el historial completo de commits y tags
 
     - name: Set up Git
       run: |
@@ -27,10 +29,11 @@ jobs:
         COMMIT_SHA=$(git rev-parse HEAD)
         
         # Create an annotated tag with the environment in the message
-        git tag -a v1.0.0-${{ env.ENVIRONMENT }} -m "Annotated tag for feature/event-folders on ${ENVIRONMENT}" $COMMIT_SHA
+        git tag -a v1.0.1-${{ env.ENVIRONMENT }} -m "Annotated tag for feature/event-folders on ${ENVIRONMENT}" $COMMIT_SHA
 
     - name: Push the tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Usar el GITHUB_TOKEN para autenticación
       run: |
-        # Use GITHUB_TOKEN for authentication to push the tag
-        git remote set-url origin https://xle29111:${{ secrets.GITHUB_TOKEN }}@github.com/xle29111/twilio-chat.git
-        git push origin v1.0.0-${{ env.ENVIRONMENT }}
+        # Push the tag to the remote repository
+        git push origin v1.0.1-${{ env.ENVIRONMENT }}
