@@ -9,9 +9,14 @@ jobs:
   create-tag:
     runs-on: ubuntu-latest
 
+    env:
+      ENVIRONMENT: develop  # Define an environment variable 'develop'
+
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Necesario para obtener el historial completo de commits y tags
 
     - name: Set up Git
       run: |
@@ -23,11 +28,15 @@ jobs:
         # Get the current commit SHA of the feature/event-folders branch
         COMMIT_SHA=$(git rev-parse HEAD)
         
-        # Create an annotated tag
-        git tag -a v1.0.1 -m "Annotated tag for feature/event-folders" $COMMIT_SHA
+        # Create an annotated tag with the environment in the message
+        git tag -a v1.0.0-${{ env.ENVIRONMENT }} -m "Annotated tag for feature/event-folders on ${ENVIRONMENT}" $COMMIT_SHA
 
     - name: Push the tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}  # Usar el PAT almacenado como secreto
       run: |
-        # Authenticate using the Personal Access Token (PAT)
+        # Configurar la URL del repositorio con el PAT para autenticación
         git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
-        git push origin v1.0.1
+        
+        # Push the tag to the remote repository
+        git push origin v1.0.0-${{ env.ENVIRONMENT }}
