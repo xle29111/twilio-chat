@@ -33,7 +33,7 @@ jobs:
 
     - name: Push the tag
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Usar el GITHUB_TOKEN para autenticación
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}  # Usar el PAT almacenado como secreto
       run: |
         # Push the tag to the remote repository
         git push origin v1.0.1-${{ env.ENVIRONMENT }}
