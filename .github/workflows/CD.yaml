@@ -23,8 +23,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.version }} 
 
       - name: Install Node.js
         uses: actions/setup-node@v3
@@ -47,16 +45,23 @@ jobs:
         id: extract-service
         run: |
           SERVICE=$(git tag -n99 | grep "${{ github.event.inputs.version }}" | awk -F ': ' '{print $2}')
+          echo "Extracted SERVICE: $SERVICE"
           echo "SERVICE=${SERVICE}" >> $GITHUB_ENV
 
       - name: Deploy service
         run: |
           echo "Deploying service: ${{ env.SERVICE }}"
-          if [ "${{ env.SERVICE }}" == "chat" ]; then
-            #npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
-          elif [ "${{ env.SERVICE }}" == "CCO MS" ]; then
-            #npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
-          elif [ "${{ env.SERVICE }}" == "CCO PS" ]; then
-            #npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+          if [[ -z "${{ env.SERVICE }}" ]]; then
+            echo "Error: SERVICE is empty. Deployment aborted."
+            exit 1
+          elif [[ "${{ env.SERVICE }}" == "chat" ]]; then
+            npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
+          elif [[ "${{ env.SERVICE }}" == "CCO MS" ]]; then
+            npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+          elif [[ "${{ env.SERVICE }}" == "CCO PS" ]]; then
+            npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+          else
+            echo "Error: Unknown service '${{ env.SERVICE }}'. Deployment aborted."
+            exit 1
           fi
         working-directory: my-project
