@@ -31,7 +31,7 @@ jobs:
 
       - name: Fetch all branches and tags
         run: |
-        git fetch --all
+          git fetch --all
 
       - name: Set up Git
         run: |
