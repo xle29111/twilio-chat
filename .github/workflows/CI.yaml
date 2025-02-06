@@ -52,7 +52,8 @@ jobs:
 
       - name: Create annotated tag
         run: |
-          git tag -a ${{ env.NEW_VERSION }} -m "${{ github.event.inputs.service }}"
+          COMMIT_SHA=$(git rev-parse HEAD)
+          git tag -a ${{ env.NEW_VERSION }} -m "${{ github.event.inputs.service }}" $COMMIT_SHA
 
       - name: Push tag
         env:
