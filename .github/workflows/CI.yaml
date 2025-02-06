@@ -50,6 +50,16 @@ jobs:
           NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
           echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
+      - name: Check if tag already exists
+        id: check-tag
+        run: |
+          if git rev-parse ${{ env.NEW_VERSION }} >/dev/null 2>&1; then
+            echo "Tag ${{ env.NEW_VERSION }} already exists. Incrementing version again."
+            echo "NEW_VERSION=v${MAJOR}.${MINOR}.$((NEW_PATCH + 1))" >> $GITHUB_ENV
+          else
+            echo "Tag ${{ env.NEW_VERSION }} does not exist. Proceeding to create it."
+          fi
+
       - name: Create annotated tag
         run: |
           COMMIT_SHA=$(git rev-parse HEAD)
