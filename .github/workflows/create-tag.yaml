@@ -18,6 +18,11 @@ jobs:
       with:
         fetch-depth: 0  # Necesario para obtener el historial completo de commits y tags
 
+    - name: Fetch all branches and tags
+      run: |
+        # Fetch all branches and tags
+        git fetch --all
+
     - name: Set up Git
       run: |
         git config --global user.name "github-actions"
@@ -27,7 +32,7 @@ jobs:
       run: |
         # Get the current commit SHA of the feature/event-folders branch
         COMMIT_SHA=$(git rev-parse HEAD)
-        
+
         # Create an annotated tag with the environment in the message
         git tag -a v1.0.0-${{ env.ENVIRONMENT }} -m "Annotated tag for feature/event-folders on ${ENVIRONMENT}" $COMMIT_SHA
 
