@@ -24,7 +24,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          fetch-depth: 1
+          ref: ${{ github.event.inputs.version }} 
 
       - name: Install Node.js
         uses: actions/setup-node@v3
