@@ -1,42 +1,50 @@
-name: Create Version Tag
+name: Generate and Push Tag
 
 on:
   push:
     branches:
-      - feature/event-folders  # Trigger the workflow on push to the feature/event-folders branch
+      - feature/event-folders
 
 jobs:
-  create-tag:
+  generate-tag:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout the repository
+    - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-
-    - name: Install dependencies
+    - name: Set up GitHub identity
       run: |
-        python -m pip install --upgrade pip
-        pip install versioneer
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Generate Version using versioneer
-      id: version
+    - name: Authenticate with PAT
       run: |
-        VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
-        echo "Generated version: $VERSION"
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-    - name: Create an annotated tag
-      run: |
-        VERSION=${{ env.VERSION }}
-        git tag -a $VERSION -m "Version $VERSION"
-
-    - name: Push the tag
-      run: |
-        # Authenticate using the Personal Access Token (PAT)
         git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
-        git push origin $VERSION
+
+    - name: Generate version
+      id: generate-version
+      run: |
+        # Obtener el último tag
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+
+        # Extraer la versión actual
+        VERSION=$(echo "$LAST_TAG" | tr -d 'v')
+
+        # Incrementar el número de patch
+        MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
+        MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
+        PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
+        NEW_PATCH=$((PATCH + 1))
+        NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+        # Guardar la nueva versión en una variable de salida
+        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+    - name: Tag the release
+      run: |
+        # Crear el nuevo tag
+        git tag ${{ steps.generate-version.outputs.NEW_VERSION }}
+
+        # Push del tag a la rama
+        git push origin ${{ steps.generate-version.outputs.NEW_VERSION }}
