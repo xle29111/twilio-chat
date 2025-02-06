@@ -41,10 +41,10 @@ jobs:
         # Guardar la nueva versión en una variable de salida
         echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
-    - name: Tag the release
+    - name: Create and Push the tag with a comment
       run: |
-        # Crear el nuevo tag
-        git tag ${{ steps.generate-version.outputs.NEW_VERSION }}
+        # Crear el tag anotado con un comentario
+        git tag -a ${{ steps.generate-version.outputs.NEW_VERSION }} -m "Tagging version ${{ steps.generate-version.outputs.NEW_VERSION }} as part of release process"
 
-        # Push del tag a la rama
+        # Hacer push del tag a la rama
         git push origin ${{ steps.generate-version.outputs.NEW_VERSION }}
