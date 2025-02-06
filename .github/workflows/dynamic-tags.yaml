@@ -13,18 +13,26 @@ jobs:
     - name: Checkout the repository
       uses: actions/checkout@v2
 
-    - name: Generate Version using commit count
-      id: version
-      uses: anothrNick/github-tag-action@v1
+    - name: Set up Python
+      uses: actions/setup-python@v2
       with:
-        tag_prefix: 'v'  # Prefix for the version (e.g. v1.0.0)
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install versioneer
+
+    - name: Generate Version using versioneer
+      id: version
+      run: |
+        VERSION=$(python -c "import versioneer; print(versioneer.get_version())")
+        echo "Generated version: $VERSION"
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Create an annotated tag
       run: |
-        VERSION=${{ steps.version.outputs.new_tag }}
-        echo "Generated version: $VERSION"
-
-        # Create an annotated tag
+        VERSION=${{ env.VERSION }}
         git tag -a $VERSION -m "Version $VERSION"
 
     - name: Push the tag
