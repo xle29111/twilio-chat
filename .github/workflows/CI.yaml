@@ -29,6 +29,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch all branches and tags
+        run: |
+        git fetch --all
+
       - name: Set up Git
         run: |
           git config --global user.name "github-actions"
