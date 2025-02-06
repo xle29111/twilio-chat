@@ -1,50 +1,68 @@
-name: Generate and Push Tag
+name: Create Annotated Tag 
 
 on:
   push:
     branches:
-      - feature/event-folders
+      - feature/event-folders  # Trigger the workflow on push to the feature/event-folders branch
 
 jobs:
-  generate-tag:
+  create-tag:
     runs-on: ubuntu-latest
 
+    env:
+      ENVIRONMENT: develop  # Define an environment variable 'develop'
+
     steps:
-    - name: Checkout code
+    - name: Checkout the repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Necesario para obtener el historial completo de commits y tags
 
-    - name: Set up GitHub identity
+    - name: Fetch all branches and tags
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch --all
 
-    - name: Authenticate with PAT
+    - name: Set up Git
       run: |
-        git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
 
-    - name: Generate version
-      id: generate-version
+    - name: Get the latest tag version and increment
       run: |
-        # Obtener el último tag o usar "v1.0.0" si no hay ninguno
+        # Get the latest tag (if exists)
         LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
 
-        # Extraer la versión actual
+        # Remove the "v" from the version tag
         VERSION=$(echo "$LAST_TAG" | tr -d 'v')
 
-        # Incrementar el número de patch
+        # Extract major, minor, and patch version numbers
         MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
         MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
         PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
+
+        # Increment the patch version
         NEW_PATCH=$((PATCH + 1))
+
+        # Construct the new version tag
         NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
 
-        # Guardar la nueva versión en una variable de salida
-        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
+        # Output the new version tag
+        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
 
-    - name: Create and Push the tag with a comment
+    - name: Create annotated tag
       run: |
-        # Crear el tag anotado con un comentario
-        git tag -a ${{ steps.generate-version.outputs.NEW_VERSION }} -m "Tagging version ${{ steps.generate-version.outputs.NEW_VERSION }} as part of release process"
+        # Get the commit SHA of the current branch (feature/event-folders)
+        COMMIT_SHA=$(git rev-parse HEAD)
 
-        # Hacer push del tag a la rama
-        git push origin ${{ steps.generate-version.outputs.NEW_VERSION }}
+        # Create an annotated tag with the incremented version
+        git tag -a $NEW_VERSION -m "Annotated tag for ${ENVIRONMENT} environment, version ${NEW_VERSION}" $COMMIT_SHA
+
+    - name: Push the tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}  # Usar el PAT almacenado como secreto
+      run: |
+        # Configure the remote URL with the PAT for authentication
+        git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
+
+        # Push the new tag to the remote repository
+        git push origin $NEW_VERSION
