@@ -36,25 +36,7 @@ jobs:
           # Mostrar el contenido del archivo (para debugging)
           cat changed_folders.txt
 
-      # Paso 3: Configurar identidad de git
-      - name: Configure Git identity
-        run: |
-          git config --global user.name "Xavier Encarnacion"
-          git config --global user.email "xavier.encarnacion@github.com"
-
-      # Paso 4: Agregar y hacer commit del archivo changed_folders.txt
-      - name: Commit Changed Folders File
-        run: |
-          # Agregar el archivo changed_folders.txt al área de staging
-          #git checkout feature/event-folders
-          #git add my-project/changed_folders.txt
-          #git commit -m "Agregar archivo changed_folders.txt con las carpetas afectadas por cambios"
-
-      # Paso 5: Realizar push con el token de GitHub
-      - name: Push Changes to Repository
-        run: |
-          # Hacer push del archivo committeado usando el token de GitHub
-          #git push https://xle29111:${{ secrets.TOKEN }}@github.com/xle29111/twilio-chat.git HEAD:feature/event-folders
+    
 
 
       # Paso 6: Ejecutar los comandos de despliegue correspondientes (comentados)
