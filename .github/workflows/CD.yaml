@@ -18,8 +18,9 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: hf-cicd-ubuntu-latest
     environment: ${{ github.event.inputs.environment }}  # Configura el ambiente dinámicamente
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -44,7 +45,11 @@ jobs:
       - name: Extract service from tag
         id: extract-service
         run: |
-          SERVICE=$(git tag -n99 | grep "${{ github.event.inputs.version }}" | awk -F ': ' '{print $2}')
+          echo "Fetching tags from repository..."
+          git fetch --tags
+          TAG="${{ github.event.inputs.version }}"
+          echo "Looking for tag: $TAG"
+          SERVICE=$(git tag -l "$TAG" -n99 | awk -F ' ' '{print $2}')
           echo "Extracted SERVICE: $SERVICE"
           echo "SERVICE=${SERVICE}" >> $GITHUB_ENV
 
