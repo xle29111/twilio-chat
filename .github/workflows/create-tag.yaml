@@ -20,7 +20,7 @@ jobs:
 
     - name: Fetch all branches and tags
       run: |
-        # Fetch all branches and tags
+        # Fetch all branches and tags from the remote
         git fetch --all
 
     - name: Set up Git
@@ -28,13 +28,22 @@ jobs:
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
 
-    - name: Create annotated tag
+    - name: Get the commit SHA for feature/event-folders and main
       run: |
         # Get the current commit SHA of the feature/event-folders branch
-        COMMIT_SHA=$(git rev-parse HEAD)
+        #COMMIT_SHA_FEATURE=$(git rev-parse origin/feature/event-folders)
+        
+        # Get the commit SHA of the main branch
+        COMMIT_SHA_MAIN=$(git rev-parse origin/main)
 
+        #echo "COMMIT_SHA_FEATURE=${COMMIT_SHA_FEATURE}"
+        echo "COMMIT_SHA_MAIN=${COMMIT_SHA_MAIN}"
+
+    - name: Create annotated tag
+      run: |
         # Create an annotated tag with the environment in the message
-        git tag -a v1.0.0-${{ env.ENVIRONMENT }} -m "Annotated tag for feature/event-folders on ${ENVIRONMENT}" $COMMIT_SHA
+        #git tag -a v1.0.0-${{ env.ENVIRONMENT }} -m "Annotated tag for feature/event-folders on ${ENVIRONMENT}" $COMMIT_SHA_FEATURE
+        git tag -a v1.0.0-${{ env.ENVIRONMENT }}-main -m "Annotated tag for main branch on ${ENVIRONMENT}" $COMMIT_SHA_MAIN
 
     - name: Push the tag
       env:
@@ -43,5 +52,6 @@ jobs:
         # Configurar la URL del repositorio con el PAT para autenticación
         git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
         
-        # Push the tag to the remote repository
+        # Push the tags to the remote repository
         git push origin v1.0.0-${{ env.ENVIRONMENT }}
+        #git push origin v1.0.0-${{ env.ENVIRONMENT }}-main
