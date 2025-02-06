@@ -1,0 +1,56 @@
+name: CI Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Select branch to deploy'
+        required: true
+        type: choice
+        options: ${{ steps.get-branches.outputs.branches }}
+      service:
+        description: 'Select service to deploy'
+        required: true
+        type: choice
+        options:
+          - chat
+          - CCO MS
+          - CCO PS
+
+jobs:
+  generate-tag:
+    runs-on: ubuntu-latest
+    if: inputs.branch == 'main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Generate version
+        id: generate-version
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          VERSION=$(echo "$LAST_TAG" | tr -d 'v')
+          MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
+          MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
+          PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+      - name: Create annotated tag
+        run: |
+          git tag -a ${{ env.NEW_VERSION }} -m "${{ github.event.inputs.service }}"
+
+      - name: Push tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        run: |
+          git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
+          git push origin ${{ env.NEW_VERSION }}
