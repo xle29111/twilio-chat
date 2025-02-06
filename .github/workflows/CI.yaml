@@ -7,7 +7,9 @@ on:
         description: 'Select branch to deploy'
         required: true
         type: choice
-        options: ${{ steps.get-branches.outputs.branches }}
+        options:
+          - develop
+          - main
       service:
         description: 'Select service to deploy'
         required: true
