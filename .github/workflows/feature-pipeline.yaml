@@ -1,14 +1,13 @@
 name: Detecting Folder Changes
 
 on:
-  push:
-    branches:
-      - 'feature/event-folders'
-    paths:
-      - 'my-project/resources/**'  # 🔹 Detecta cambios en cualquier carpeta dentro de /my-project/resources
+  pull_request:
+    types:
+      - closed
 
 jobs:
   deploy:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest  # 🔹 Usa el runner especificado
     environment: develop  # 🔹 Usa el environment "develop"
 
@@ -19,7 +18,8 @@ jobs:
         with:
           fetch-depth: 2  # 🔹 Obtiene el commit actual y el anterior
 
-      # Paso 2: Detectar cambios y almacenar las carpetas afectadas en un archivo de texto
+
+      # Paso 3: Detectar cambios y almacenar las carpetas afectadas en un archivo de texto
       - name: Detect Changes and Save to File
         id: detect-changes
         run: |
@@ -27,9 +27,6 @@ jobs:
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
 
           # Crear un archivo para guardar las carpetas afectadas
-          #echo "Carpetas afectadas:" > changed_folders.txt
-
-          # Iterar sobre las carpetas de resources y detectar cambios
           for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS my-project/resources/CCO_Progressive_Testing_Flow_Multilingual my-project/resources/Declined\ Payment my-project/resources/training my-project/resources/campaign-FSA my-project/resources/timebank my-project/resources/CCO_Preview_Testing_Flow_Multilingual my-project/resources/CCO\ RCC\ Payment my-project/resources/IT\ Service\ Desk my-project/resources/IT\ Service\ Desk\ Chat my-project/resources/MLTC my-project/resources/BH-PCP my-project/resources/Direct\ Inward\ Dial my-project/resources/CE\ Welcome\ Team my-project/resources/Clinical\ BH\ Inbound my-project/resources/Pharmacy\ MedConnect\ Inbound my-project/resources/Pharmacy_MCR_Pharmacist_Outreach_Inbound_Flow my-project/resources/QHP\ Binder\ Payments my-project/resources/LTC\ Campaign my-project/resources/SDOH\ Campaign my-project/resources/Outbound\ Calls; do
             if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
               echo "$FOLDER" >> changed_folders.txt
@@ -39,14 +36,7 @@ jobs:
           # Mostrar el contenido del archivo (para debugging)
           cat changed_folders.txt
 
-      # Paso 3: Publicar el archivo de carpetas afectadas como un artefacto
-      - name: Upload Changed Folders File
-        uses: actions/upload-artifact@v4
-        with:
-          name: changed_folders
-          path: changed_folders.txt
-
-      # Paso 4: Ejecutar los comandos de despliegue correspondientes (comentados)
+      # Paso 6: Ejecutar los comandos de despliegue correspondientes (comentados)
       - name: Deploy Based on Changes
         run: |
           # Leer el archivo de carpetas afectadas
