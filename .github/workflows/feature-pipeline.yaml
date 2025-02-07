@@ -1,11 +1,9 @@
 name: Detecting Folder Changes
 
 on:
-  push:
-    #branches:
-    #  - 'feature/event-folders'
-    paths:
-      - 'my-project/resources/**'  # 🔹 Detecta cambios en cualquier carpeta dentro de /my-project/resources
+  pull_request:
+    types:
+      - closed
 
 jobs:
   deploy:
