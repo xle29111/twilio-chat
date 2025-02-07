@@ -1,0 +1,68 @@
+name: Create Annotated Tag 
+
+on:
+  push:
+    branches:
+      - feature/event-folders  # Trigger the workflow on push to the feature/event-folders branch
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: develop  # Define an environment variable 'develop'
+
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # Necesario para obtener el historial completo de commits y tags
+
+    - name: Fetch all branches and tags
+      run: |
+        git fetch --all
+
+    - name: Set up Git
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+
+    - name: Get the latest tag version and increment
+      run: |
+        # Get the latest tag (if exists)
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+
+        # Remove the "v" from the version tag
+        VERSION=$(echo "$LAST_TAG" | tr -d 'v')
+
+        # Extract major, minor, and patch version numbers
+        MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
+        MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
+        PATCH=$(echo "$VERSION" | awk -F. '{print $3}')
+
+        # Increment the patch version
+        NEW_PATCH=$((PATCH + 1))
+
+        # Construct the new version tag
+        NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+        # Output the new version tag
+        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+
+    - name: Create annotated tag
+      run: |
+        # Get the commit SHA of the current branch (feature/event-folders)
+        COMMIT_SHA=$(git rev-parse HEAD)
+
+        # Create an annotated tag with the incremented version
+        git tag -a $NEW_VERSION -m "Annotated tag for ${ENVIRONMENT} environment, version ${NEW_VERSION}" $COMMIT_SHA
+
+    - name: Push the tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}  # Usar el PAT almacenado como secreto
+      run: |
+        # Configure the remote URL with the PAT for authentication
+        git remote set-url origin https://xle29111:${{ secrets.PAT }}@github.com/xle29111/twilio-chat.git
+
+        # Push the new tag to the remote repository
+        git push origin $NEW_VERSION
