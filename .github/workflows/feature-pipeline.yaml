@@ -17,10 +17,6 @@ jobs:
         with:
           fetch-depth: 2  # 🔹 Obtiene el commit actual y el anterior
 
-      # Paso 2: Asegurarse de estar en la rama develop
-      - name: Checkout to develop branch
-        run: |
-          git checkout develop  # 🔹 Cambia a la rama develop
 
       # Paso 3: Detectar cambios y almacenar las carpetas afectadas en un archivo de texto
       - name: Detect Changes and Save to File
