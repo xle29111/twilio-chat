@@ -47,49 +47,65 @@ jobs:
         run: |
           git fetch --tags
           TAG="${{ github.event.inputs.version }}"
-          PREVIOUS_COMMIT=$(git rev-list -n 1 "$TAG^1")
-          CHANGED_FILES=$(git diff --name-only "$PREVIOUS_COMMIT" "$TAG")
+          echo "Using tag: $TAG"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            PREVIOUS_COMMIT=$(git rev-list -n 1 "$TAG^1")
+            echo "Previous commit: $PREVIOUS_COMMIT"
+            CHANGED_FILES=$(git diff --name-only "$PREVIOUS_COMMIT" "$TAG")
 
-          # Crear un archivo para guardar las carpetas afectadas
-          for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS; do
-            if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
-              echo "$FOLDER" >> changed_folders.txt
+            # Crear un archivo para guardar las carpetas afectadas
+            for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS; do
+              if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
+                echo "$FOLDER" >> changed_folders.txt
+              fi
+            done
+
+            # Mostrar el contenido del archivo (para debugging)
+            if [ -f changed_folders.txt ]; then
+              cat changed_folders.txt
+            else
+              echo "No changes detected in the specified folders."
             fi
-          done
-
-          # Mostrar el contenido del archivo (para debugging)
-          cat changed_folders.txt
+          else
+            echo "Error: Tag '$TAG' does not exist."
+            exit 1
+          fi
 
       - name: Deploy Based on Changes
+        if: success()
         run: |
-          # Leer el archivo de carpetas afectadas
-          CHANGED_FOLDERS=$(cat changed_folders.txt)
+          if [ -f changed_folders.txt ]; then
+            # Leer el archivo de carpetas afectadas
+            CHANGED_FOLDERS=$(cat changed_folders.txt)
 
-          # Función para ejecutar el comando de despliegue según la carpeta
-          deploy_folder() {
-            case $1 in
-              "my-project/resources/chat")
-                echo "Desplegando Chat..."
-                npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
-                ;;
-              "my-project/resources/CCO MS")
-                echo "Desplegando CCO MS..."
-                npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
-                ;;
-              "my-project/resources/CCO PS")
-                echo "Desplegando CCO PS..."
-                npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
-                ;;
-              *)
-                echo "No se detectaron cambios relevantes en la carpeta: $1"
-                ;;
-            esac
-          }
+            # Función para ejecutar el comando de despliegue según la carpeta
+            deploy_folder() {
+              case $1 in
+                "my-project/resources/chat")
+                  echo "Desplegando Chat..."
+                  npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
+                  ;;
+                "my-project/resources/CCO MS")
+                  echo "Desplegando CCO MS..."
+                  npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                  ;;
+                "my-project/resources/CCO PS")
+                  echo "Desplegando CCO PS..."
+                  npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                  ;;
+                *)
+                  echo "No se detectaron cambios relevantes en la carpeta: $1"
+                  ;;
+              esac
+            }
 
-          # Iterar sobre las carpetas y ejecutar el comando de despliegue correspondiente
-          while IFS= read -r FOLDER; do
-            if [[ "$FOLDER" == "Carpetas afectadas:" ]]; then
-              continue  # Saltar la línea de encabezado
-            fi
-            deploy_folder "$FOLDER"
-          done <<< "$CHANGED_FOLDERS"
+            # Iterar sobre las carpetas y ejecutar el comando de despliegue correspondiente
+            while IFS= read -r FOLDER; do
+              if [[ "$FOLDER" == "Carpetas afectadas:" ]]; then
+                continue  # Saltar la línea de encabezado
+              fi
+              deploy_folder "$FOLDER"
+            done <<< "$CHANGED_FOLDERS"
+          else
+            echo "No changed folders to deploy."
+          fi
