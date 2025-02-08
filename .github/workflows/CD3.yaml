@@ -1,0 +1,68 @@
+name: Detect Changes in Monorepo
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Enter the version to detect changes'
+        required: true
+        type: string
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Trae todo el historial de commits
+
+      - name: Verify input version
+        id: verify-version
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Error: Version '$VERSION' does not exist."
+            exit 1
+          fi
+          echo "Version '$VERSION' exists."
+
+      - name: Get previous commit
+        id: get-previous-commit
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          PREVIOUS_COMMIT=$(git rev-list -n 1 "$VERSION^1")
+          echo "Previous commit: $PREVIOUS_COMMIT"
+          echo "::set-output name=previous_commit::$PREVIOUS_COMMIT"
+
+      - name: Detect changes
+        id: detect-changes
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          PREVIOUS_COMMIT=${{ steps.get-previous-commit.outputs.previous_commit }}
+          CHANGED_FILES=$(git diff --name-only "$PREVIOUS_COMMIT" "$VERSION")
+
+          # Crear un archivo para guardar las carpetas afectadas
+          for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS; do
+            if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
+              echo "$FOLDER" >> changed_folders.txt
+            fi
+          done
+
+          # Mostrar el contenido del archivo (para debugging)
+          if [ -f changed_folders.txt ]; then
+            cat changed_folders.txt
+          else
+            echo "No changes detected in the specified folders."
+          fi
+
+      - name: Output changed folders
+        if: success()
+        run: |
+          if [ -f changed_folders.txt ]; then
+            echo "Folders with changes:"
+            cat changed_folders.txt
+          else
+            echo "No changes detected in the specified folders."
+          fi
