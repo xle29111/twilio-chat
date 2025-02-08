@@ -85,15 +85,15 @@ jobs:
               case $1 in
                 "my-project/resources/chat")
                   echo "Desplegando Chat..."
-                  npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
+                  #npm run deploy:chat -- --c "[B-389745] testing cicd" --skip-confirmation
                   ;;
                 "my-project/resources/CCO MS")
                   echo "Desplegando CCO MS..."
-                  npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                  #npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
                   ;;
                 "my-project/resources/CCO PS")
                   echo "Desplegando CCO PS..."
-                  npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
+                  #npm run deploy:cco-ms -- --c "[B-389745] testing cicd" --skip-confirmation
                   ;;
                 *)
                   echo "No se detectaron cambios relevantes en la carpeta: $1"
