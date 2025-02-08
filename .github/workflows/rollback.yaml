@@ -100,15 +100,15 @@ jobs:
             case $1 in
               "my-project/resources/chat")
                 echo "Rolling back Chat..."
-                npm run deploy:chat -- --c "'chat',${{ github.event.inputs.version }},'dev'" --skip-confirmation
+                #npm run deploy:chat -- --c "'chat',${{ github.event.inputs.version }},'dev'" --skip-confirmation
                 ;;
               "my-project/resources/CCO MS")
                 echo "Rolling back CCO MS..."
-                npm run deploy:cco-ms -- --c "'CCO MS',${{ github.event.inputs.version }},'dev'" --skip-confirmation
+                #npm run deploy:cco-ms -- --c "'CCO MS',${{ github.event.inputs.version }},'dev'" --skip-confirmation
                 ;;
               "my-project/resources/CCO PS")
                 echo "Rolling back CCO PS..."
-                npm run deploy:cco-ms -- --c "'CCO PS',${{ github.event.inputs.version }},'dev'" --skip-confirmation
+                #npm run deploy:cco-ms -- --c "'CCO PS',${{ github.event.inputs.version }},'dev'" --skip-confirmation
                 ;;
               *)
                 echo "No relevant changes detected in the folder: $1"
