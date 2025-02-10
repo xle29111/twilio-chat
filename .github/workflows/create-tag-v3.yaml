@@ -19,24 +19,47 @@ jobs:
           fetch-depth: 0  # Fetch all commit history
 
 
-      # Step 4: Get the current commit
+      # Step 6: Get the version from package.json
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "::set-output name=VERSION::$VERSION"
+        working-directory: ./my-project
+
+      # Step 4: Check if the tag already exists
+      - name: Check for existing tag
+        id: check_tag
+        run: |
+          TAG_EXISTS=$(git tag -l "v${{ steps.get_version.outputs.VERSION }}")
+          if [ -n "$TAG_EXISTS" ]; then
+            echo "Tag v${{ steps.get_version.outputs.VERSION }} already exists."
+            echo "::set-output name=TAG_EXISTS::true"
+          else
+            echo "::set-output name=TAG_EXISTS::false"
+          fi
+
+     # Step 6: Get the current commit
       - name: Get current commit
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
         id: get_current_commit
         run: |
           CURRENT_COMMIT=$(git rev-parse HEAD)
           echo "Current Commit: $CURRENT_COMMIT"
           echo "::set-output name=CURRENT_COMMIT::$CURRENT_COMMIT"
 
-      # Step 5: Get the previous commit
+      # Step 7: Get the previous commit
       - name: Get previous commit
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
         id: get_previous_commit
         run: |
           PREVIOUS_COMMIT=$(git rev-list -n 1 HEAD^1)
           echo "Previous Commit: $PREVIOUS_COMMIT"
           echo "::set-output name=PREVIOUS_COMMIT::$PREVIOUS_COMMIT"
 
-      # Step 6: Compare commits to identify changes
+      # Step 8: Compare commits to identify changes
       - name: Compare commits
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
         id: compare_commits
         run: |
           CHANGED_FILES=$(git diff --name-only ${{ steps.get_previous_commit.outputs.PREVIOUS_COMMIT }} ${{ steps.get_current_commit.outputs.CURRENT_COMMIT }})
@@ -59,16 +82,9 @@ jobs:
             echo "::set-output name=AFFECTED_FOLDERS::$AFFECTED_FOLDERS"
           fi
 
-      # Step 6: Get the version from package.json
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "::set-output name=VERSION::$VERSION"
-        working-directory: ./my-project
-
-      # Step 8: Create a new tag based on the version
+      # Step 9: Create a new tag based on the version
       - name: Create and push tag
+        if: steps.check_tag.outputs.TAG_EXISTS == 'false'
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
           AFFECTED_FOLDERS: ${{ steps.compare_commits.outputs.AFFECTED_FOLDERS }}
