@@ -41,26 +41,30 @@ jobs:
         run: |
           CHANGED_FILES=$(git diff --name-only ${{ steps.get_previous_commit.outputs.PREVIOUS_COMMIT }} ${{ steps.get_current_commit.outputs.CURRENT_COMMIT }})
           echo "Changed files: $CHANGED_FILES"
-          AFFECTED_FOLDER=""
+          AFFECTED_FOLDERS=""
           for FOLDER in chat CCO\ MS CCO\ PS; do
             if echo "$CHANGED_FILES" | grep -q "my-project/resources/$FOLDER/"; then
-              AFFECTED_FOLDER="$FOLDER"
-              break
+              if [ -z "$AFFECTED_FOLDERS" ]; then
+                AFFECTED_FOLDERS="$FOLDER"
+              else
+                AFFECTED_FOLDERS="$AFFECTED_FOLDERS, $FOLDER"
+              fi
             fi
           done
-          if [ -z "$AFFECTED_FOLDER" ]; then
+          if [ -z "$AFFECTED_FOLDERS" ]; then
             echo "No relevant changes detected."
             exit 1
           else
-            echo "Affected folder: $AFFECTED_FOLDER"
-            echo "::set-output name=AFFECTED_FOLDER::$AFFECTED_FOLDER"
+            echo "Affected folders: $AFFECTED_FOLDERS"
+            echo "::set-output name=AFFECTED_FOLDERS::$AFFECTED_FOLDERS"
           fi
 
       # Step 7: Get the version from package.json
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p "require('./resources/package.json').version")
+          echo "Version: $VERSION"
           echo "::set-output name=VERSION::$VERSION"
         working-directory: ./my-project
 
@@ -68,9 +72,9 @@ jobs:
       - name: Create and push tag
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
-          AFFECTED_FOLDER: ${{ steps.compare_commits.outputs.AFFECTED_FOLDER }}
+          AFFECTED_FOLDERS: ${{ steps.compare_commits.outputs.AFFECTED_FOLDERS }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" -m "$AFFECTED_FOLDER"
+          git tag -a "v$VERSION" -m "$AFFECTED_FOLDERS"
           git push origin "refs/tags/v$VERSION"
