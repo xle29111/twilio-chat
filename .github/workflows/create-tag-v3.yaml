@@ -1,0 +1,75 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [closed]
+
+jobs:
+  compare_and_tag:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Fetch all commit history
+
+      # Step 4: Get the current commit
+      - name: Get current commit
+        id: get_current_commit
+        run: |
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          echo "Current Commit: $CURRENT_COMMIT"
+          echo "::set-output name=CURRENT_COMMIT::$CURRENT_COMMIT"
+
+      # Step 5: Get the previous commit
+      - name: Get previous commit
+        id: get_previous_commit
+        run: |
+          PREVIOUS_COMMIT=$(git rev-list -n 1 HEAD^1)
+          echo "Previous Commit: $PREVIOUS_COMMIT"
+          echo "::set-output name=PREVIOUS_COMMIT::$PREVIOUS_COMMIT"
+
+      # Step 6: Compare commits to identify changes
+      - name: Compare commits
+        id: compare_commits
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ steps.get_previous_commit.outputs.PREVIOUS_COMMIT }} ${{ steps.get_current_commit.outputs.CURRENT_COMMIT }})
+          echo "Changed files: $CHANGED_FILES"
+          AFFECTED_FOLDER=""
+          for FOLDER in chat CCO\ MS CCO\ PS; do
+            if echo "$CHANGED_FILES" | grep -q "my-project/resources/$FOLDER/"; then
+              AFFECTED_FOLDER="$FOLDER"
+              break
+            fi
+          done
+          if [ -z "$AFFECTED_FOLDER" ]; then
+            echo "No relevant changes detected."
+            exit 1
+          else
+            echo "Affected folder: $AFFECTED_FOLDER"
+            echo "::set-output name=AFFECTED_FOLDER::$AFFECTED_FOLDER"
+          fi
+
+      # Step 7: Get the version from package.json
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./my-project/resources/package.json').version")
+          echo "Version: $VERSION"
+          echo "::set-output name=VERSION::$VERSION"
+
+      # Step 8: Create a new tag based on the version
+      - name: Create and push tag
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          AFFECTED_FOLDER: ${{ steps.compare_commits.outputs.AFFECTED_FOLDER }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "$AFFECTED_FOLDER"
+          git push origin "refs/tags/v$VERSION"
