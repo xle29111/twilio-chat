@@ -11,14 +11,20 @@ jobs:
 
     steps:
 
-      # Step 4: Get the version from package.json
+      # Step 5: Debug - List files in the current directory
+      - name: List files
+        run: ls -R
+        working-directory: ./my-project
+
+      # Step 6: Get the version from package.json
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(node -p "require('./my-project/package.json').version")
+          VERSION=$(node -p "require('./package.json').version")
           echo "::set-output name=VERSION::$VERSION"
+        working-directory: ./my-project
 
-      # Step 5: Create a new tag based on the version
+      # Step 7: Create a new tag based on the version
       - name: Create and push tag
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
