@@ -60,8 +60,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(node -p "require('./resources/package.json').version")
-          echo "Version: $VERSION"
+          VERSION=$(node -p "require('./package.json').version")
           echo "::set-output name=VERSION::$VERSION"
         working-directory: ./my-project
 
