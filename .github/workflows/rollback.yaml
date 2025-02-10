@@ -8,9 +8,14 @@ on:
         required: true
         type: string
       flow:
-        description: 'Flow to rollback (e.g., chat, CCO MS, CCO PS, all)'
-        required: false
-        type: string
+        description: 'Flow to rollback'
+        required: true
+        type: choice
+        options:
+          - chat
+          - CCO MS
+          - CCO PS
+          - all
 
 jobs:
   rollback:
@@ -43,8 +48,9 @@ jobs:
           echo "Previous commit: $PREVIOUS_COMMIT"
           echo "::set-output name=previous_commit::$PREVIOUS_COMMIT"
 
-      # Step 4: Detect changes between the specified version and the previous commit
+      # Step 4: Detect changes between the specified version and the previous commit (only for 'all' option)
       - name: Detect changes
+        if: ${{ github.event.inputs.flow == 'all' }}
         id: detect-changes
         run: |
           VERSION=${{ github.event.inputs.version }}
@@ -66,55 +72,45 @@ jobs:
             exit 0
           fi
 
-      # Step 5: Prompt user to choose flow if multiple changes detected
-      - name: Prompt user for flow selection
-        id: prompt-flow
-        if: ${{ steps.detect-changes.outputs.changed_folders.txt }}
-        run: |
-          CHANGED_FOLDERS=$(cat changed_folders.txt)
-          echo "::set-output name=changed_folders::$CHANGED_FOLDERS"
-          echo "Changed folders: $CHANGED_FOLDERS"
-
-      # Step 6: Rollback based on user input or detected changes
-      - name: Rollback based on changes
-        if: success()
+      # Step 5: Rollback based on the selected flow
+      - name: Rollback based on flow
         run: |
           FLOW=${{ github.event.inputs.flow }}
-          CHANGED_FOLDERS=${{ steps.prompt-flow.outputs.changed_folders }}
-
-          if [ -z "$FLOW" ]; then
-            if [ $(echo "$CHANGED_FOLDERS" | wc -l) -gt 1 ]; then
-              echo "Multiple flows detected. Please specify the flow to rollback using the 'flow' input."
-              exit 1
-            else
-              FLOW=$(echo "$CHANGED_FOLDERS" | tr -d '\n')
-            fi
-          fi
 
           rollback_flow() {
             case $1 in
-              "my-project/resources/chat")
+              "chat")
                 echo "Rolling back Chat..."
-                npm run deploy:chat -- --c "'chat',${{ github.event.inputs.version }},'dev'" --skip-confirmation
+                echo "chat v3.1.1" > my-project/resources/chat/chat.txt
                 ;;
-              "my-project/resources/CCO MS")
+              "CCO MS")
                 echo "Rolling back CCO MS..."
-                npm run deploy:cco-ms -- --c "'CCO MS',${{ github.event.inputs.version }},'dev'" --skip-confirmation
+                echo "cco ms v1.1.1" > my-project/resources/CCO\ MS/cco\ ms.txt
                 ;;
-              "my-project/resources/CCO PS")
+              "CCO PS")
                 echo "Rolling back CCO PS..."
-                npm run deploy:cco-ms -- --c "'CCO PS',${{ github.event.inputs.version }},'dev'" --skip-confirmation
+                echo "cco ps v2.1.2" > my-project/resources/CCO\ PS/cco\ ps.txt
                 ;;
               *)
-                echo "No relevant changes detected in the folder: $1"
+                echo "Invalid flow selected."
+                exit 1
                 ;;
             esac
           }
 
           if [ "$FLOW" == "all" ]; then
             while IFS= read -r FOLDER; do
-              rollback_flow "$FOLDER"
-            done <<< "$CHANGED_FOLDERS"
+              rollback_flow "${FOLDER##*/}"
+            done < changed_folders.txt
           else
-            rollback_flow "my-project/resources/$FLOW"
+            rollback_flow "$FLOW"
           fi
+
+      # Step 6: Commit the changes
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add my-project/resources/*
+          git commit -m "Rollback to version ${{ github.event.inputs.version }} for ${{ github.event.inputs.flow }} flow"
+          git push origin HEAD:refs/heads/${{ github.ref_name }}
