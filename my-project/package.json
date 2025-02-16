@@ -6,7 +6,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "twilio-run",
     "deploy": "twilio-run deploy",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "semantic-release": "semantic-release"
   },
   "dependencies": {
     "@twilio/runtime-handler": "2.0.0",
@@ -16,7 +17,8 @@
     "husky": "^9.1.7",
     "twilio-run": "^4.0.3",
     "@commitlint/cli": "^19.7.1",
-    "@commitlint/config-conventional": "^19.7.1"
+    "@commitlint/config-conventional": "^19.7.1",
+    "semantic-release": "^21.0.5"
   },
   "engines": {
     "node": "18"
