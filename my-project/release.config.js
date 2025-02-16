@@ -1,10 +1,8 @@
 module.exports = {
     branches: [
-      "main",          // Rama principal para lanzamientos en producción
-      "develop",       // Rama de desarrollo
-      "release/*",     // Ramas de lanzamiento siguiendo el patrón de Gitflow
-      "feature/*",     // Opcional: Ramas de características
-           
+      { name: "main" },  // Solo la rama principal para releases
+      { name: "develop", channel: "develop", prerelease: true }, // Para pre-releases
+      { name: "release/*", prerelease: "${name.replace(/^release\\//, '')}" } // Soporte para ramas de release
     ],
     plugins: [
       "@semantic-release/commit-analyzer",
@@ -13,3 +11,4 @@ module.exports = {
       "@semantic-release/github"
     ]
   };
+  
