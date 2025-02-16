@@ -1,14 +1,13 @@
 name: Detecting Folder Changes
 
 on:
-  push:
-    #branches:
-    #  - 'feature/event-folders'
-    paths:
-      - 'my-project/resources/**'  # 🔹 Detecta cambios en cualquier carpeta dentro de /my-project/resources
+  pull_request:
+    types:
+      - closed
 
 jobs:
   deploy:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest  # 🔹 Usa el runner especificado
     environment: develop  # 🔹 Usa el environment "develop"
 
@@ -19,10 +18,6 @@ jobs:
         with:
           fetch-depth: 2  # 🔹 Obtiene el commit actual y el anterior
 
-      # Paso 2: Asegurarse de estar en la rama develop
-      - name: Checkout to develop branch
-        run: |
-          git checkout develop  # 🔹 Cambia a la rama develop
 
       # Paso 3: Detectar cambios y almacenar las carpetas afectadas en un archivo de texto
       - name: Detect Changes and Save to File

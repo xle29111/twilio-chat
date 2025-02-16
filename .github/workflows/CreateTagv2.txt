@@ -1,0 +1,37 @@
+name: Tag on Merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  create_tag:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 5: Debug - List files in the current directory
+      - name: List files
+        run: ls -R
+        working-directory: ./my-project
+
+      # Step 6: Get the version from package.json
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "::set-output name=VERSION::$VERSION"
+        working-directory: ./my-project
+
+      # Step 7: Create a new tag based on the version
+      - name: Create and push tag
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release version $VERSION"
+          git push origin "refs/tags/v$VERSION"

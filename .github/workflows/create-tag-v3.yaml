@@ -1,10 +1,10 @@
 name: CI Pipeline
 
 on:
-  pull_request:
+  workflow_dispatch:
+  push:
     branches:
-      - main
-    types: [closed]
+      - develop
 
 jobs:
   compare_and_tag:
@@ -18,58 +18,74 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all commit history
 
-      # Step 4: Get the current commit
-      - name: Get current commit
-        id: get_current_commit
-        run: |
-          CURRENT_COMMIT=$(git rev-parse HEAD)
-          echo "Current Commit: $CURRENT_COMMIT"
-          echo "::set-output name=CURRENT_COMMIT::$CURRENT_COMMIT"
 
-      # Step 5: Get the previous commit
-      - name: Get previous commit
-        id: get_previous_commit
-        run: |
-          PREVIOUS_COMMIT=$(git rev-list -n 1 HEAD^1)
-          echo "Previous Commit: $PREVIOUS_COMMIT"
-          echo "::set-output name=PREVIOUS_COMMIT::$PREVIOUS_COMMIT"
-
-      # Step 6: Compare commits to identify changes
-      - name: Compare commits
-        id: compare_commits
-        run: |
-          CHANGED_FILES=$(git diff --name-only ${{ steps.get_previous_commit.outputs.PREVIOUS_COMMIT }} ${{ steps.get_current_commit.outputs.CURRENT_COMMIT }})
-          echo "Changed files: $CHANGED_FILES"
-          AFFECTED_FOLDER=""
-          for FOLDER in chat CCO\ MS CCO\ PS; do
-            if echo "$CHANGED_FILES" | grep -q "my-project/resources/$FOLDER/"; then
-              AFFECTED_FOLDER="$FOLDER"
-              break
-            fi
-          done
-          if [ -z "$AFFECTED_FOLDER" ]; then
-            echo "No relevant changes detected."
-            exit 1
-          else
-            echo "Affected folder: $AFFECTED_FOLDER"
-            echo "::set-output name=AFFECTED_FOLDER::$AFFECTED_FOLDER"
-          fi
-
-      # Step 7: Get the version from package.json
+      # Step 6: Get the version from package.json
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(node -p "require('./my-project/resources/package.json').version")
-          echo "Version: $VERSION"
-          echo "::set-output name=VERSION::$VERSION"
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+        working-directory: ./my-project
 
-      # Step 8: Create a new tag based on the version
+      # Step 4: Check if the tag already exists
+      - name: Check for existing tag
+        id: check_tag
+        run: |
+          TAG_EXISTS=$(git tag -l "v${{ env.VERSION }}")
+          if [ -n "$TAG_EXISTS" ]; then
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+     # Step 6: Get the current commit
+      - name: Get current commit
+        if: env.TAG_EXISTS == 'false'
+        id: get_current_commit
+        run: |
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          echo "CURRENT_COMMIT=$CURRENT_COMMIT" >> $GITHUB_ENV
+
+      # Step 7: Get the previous commit
+      - name: Get previous commit
+        if: env.TAG_EXISTS == 'false'
+        id: get_previous_commit
+        run: |
+          PREVIOUS_COMMIT=$(git rev-list -n 1 HEAD^1)
+          echo "PREVIOUS_COMMIT=$PREVIOUS_COMMIT" >> $GITHUB_ENV
+
+      # Step 8: Compare commits to identify changes
+      - name: Compare commits
+        if: env.TAG_EXISTS == 'false'
+        id: compare_commits
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ env.PREVIOUS_COMMIT }} ${{ env.CURRENT_COMMIT }})
+          echo "Changed files: $CHANGED_FILES"
+          AFFECTED_FOLDERS=""
+          for FOLDER in chat CCO\ MS CCO\ PS; do
+            if echo "$CHANGED_FILES" | grep -q "my-project/resources/$FOLDER/"; then
+              if [ -z "$AFFECTED_FOLDERS" ]; then
+                AFFECTED_FOLDERS="$FOLDER"
+              else
+                AFFECTED_FOLDERS="$AFFECTED_FOLDERS, $FOLDER"
+              fi
+            fi
+          done
+          if [ -z "$AFFECTED_FOLDERS" ]; then
+            echo "No relevant changes detected."
+            exit 1
+          else
+            echo "AFFECTED_FOLDERS=$AFFECTED_FOLDERS" >> $GITHUB_ENV
+          fi
+
+      # Step 9: Create a new tag based on the version
       - name: Create and push tag
+        if: env.TAG_EXISTS == 'false'
         env:
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
-          AFFECTED_FOLDER: ${{ steps.compare_commits.outputs.AFFECTED_FOLDER }}
+          VERSION: ${{ env.VERSION }}
+          AFFECTED_FOLDERS: ${{ env.AFFECTED_FOLDERS }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" -m "$AFFECTED_FOLDER"
+          git tag -a "v$VERSION" -m "$AFFECTED_FOLDERS"
           git push origin "refs/tags/v$VERSION"

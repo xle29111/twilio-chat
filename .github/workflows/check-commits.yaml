@@ -1,0 +1,69 @@
+name: Conventional Commits Lint and Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+       # Cambia esto por la rama que deseas proteger
+      
+
+jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Necesario para obtener el historial completo de commits
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18  # Usa la versión 18 de Node.js
+
+      - name: Install dependencies
+        working-directory: ./my-project
+        run: npm install
+
+      - name: Install Husky
+        working-directory: ./my-project
+        run: npx husky install
+
+      - name: Add Husky hooks
+        working-directory: ./my-project
+        run: |
+          echo 'npx --no-install commitlint --edit $1' > .husky/commit-msg
+          chmod +x .husky/commit-msg
+          echo 'npx --no-install commitlint --from=origin/main --to=HEAD' > .husky/pre-push
+          chmod +x .husky/pre-push
+
+      - name: Lint commits
+        working-directory: ./my-project
+        run: |
+          npx commitlint --from=HEAD~1 --to=HEAD --verbose
+
+  release:
+    needs: [lint-commits]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Necesario para obtener el historial completo de commits
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18  # Usa la versión 18 de Node.js
+
+      - name: Install dependencies
+        working-directory: ./my-project
+        run: npm install
+
+      - name: Semantic Release
+        working-directory: ./my-project
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        run: npm run semantic-release
