@@ -1,6 +1,10 @@
 {
+  "scripts": {
+    "prepare": "husky install"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.7.1",
-    "@commitlint/config-conventional": "^19.7.1"
+    "@commitlint/config-conventional": "^19.7.1",
+    "husky": "^8.0.0"
   }
 }

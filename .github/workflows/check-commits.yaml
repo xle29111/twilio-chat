@@ -23,10 +23,19 @@ jobs:
         with:
           node-version: 16  # Puedes cambiar la versión de Node.js según tus necesidades
 
-      - name: Install commitlint and conventional config
+      - name: Install dependencies
+        working-directory: ./my-project
         run: |
-          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+          npm install --save-dev @commitlint/cli @commitlint/config-conventional husky
+
+      - name: Configure Husky
+        working-directory: ./my-project
+        run: |
+          npx husky install
+          npx husky add .husky/commit-msg "npx commitlint --edit $1"
+          npx husky add .husky/pre-push "npx commitlint --from=origin/main --to=HEAD"
 
       - name: Lint commits
+        working-directory: ./my-project
         run: |
           npx commitlint --from=HEAD~1 --to=HEAD --verbose
