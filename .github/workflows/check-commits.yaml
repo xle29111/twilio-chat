@@ -27,12 +27,15 @@ jobs:
         working-directory: ./my-project
         run: npm install
 
-      - name: Configure Husky
+      - name: Install Husky
+        working-directory: ./my-project
+        run: npx husky install
+
+      - name: Add Husky hooks
         working-directory: ./my-project
         run: |
-          npx husky install
-          npx husky set .husky/commit-msg "npx commitlint --edit $1"
-          npx husky set .husky/pre-push "npx commitlint --from=origin/main --to=HEAD"
+          npx husky add .husky/commit-msg "npx --no-install commitlint --edit $1"
+          npx husky add .husky/pre-push "npx --no-install commitlint --from=origin/main --to=HEAD"
 
       - name: Lint commits
         working-directory: ./my-project
