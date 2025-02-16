@@ -3,10 +3,8 @@ name: Conventional Commits Lint and Semantic Release
 on:
   push:
     branches:
-      - feature/check-commits
-  pull_request:
-    branches:
-      - main       # Cambia esto por la rama que deseas proteger
+      - main
+       # Cambia esto por la rama que deseas proteger
       
 
 jobs:
