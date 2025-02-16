@@ -23,7 +23,7 @@
     "@semantic-release/release-notes-generator": "^10.0.3",
     "@semantic-release/npm": "^10.0.1",
     "@semantic-release/github": "^8.0.5",
-    "@semantic-release/changelog": "^6.0.1"  // Añadimos el plugin de changelog
+    "@semantic-release/changelog": "^6.0.1"
   },
   "engines": {
     "node": "18"
