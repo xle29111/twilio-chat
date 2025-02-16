@@ -1,4 +1,4 @@
-name: Conventional Commits Lint 
+name: Conventional Commits Lint
 
 on:
   push:
