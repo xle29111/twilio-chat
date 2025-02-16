@@ -31,9 +31,9 @@ jobs:
       - name: Configure Husky
         run: |  # Configura Husky en la raíz del repositorio
           cd my-project
-          npx husky install ../.husky  # Instala Husky en la raíz, pero usa la configuración del subdirectorio
-          npx husky set ../.husky/commit-msg "cd my-project && npx commitlint --edit $1"
-          npx husky set ../.husky/pre-push "cd my-project && npx commitlint --from=origin/main --to=HEAD"
+          npx husky init ../.husky  # Inicializa Husky en la raíz
+          npx husky add ../.husky/commit-msg "cd my-project && npx commitlint --edit $1"
+          npx husky add ../.husky/pre-push "cd my-project && npx commitlint --from=origin/main --to=HEAD"
 
       - name: Lint commits
         working-directory: ./my-project  # Ejecuta commitlint en el subdirectorio
