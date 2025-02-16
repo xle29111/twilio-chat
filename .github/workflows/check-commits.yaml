@@ -1,30 +1,32 @@
-name: Lint Commits
+name: Conventional Commits Lint
 
 on:
-  pull_request:
-    branches:
-      - main
-      
   push:
     branches:
-      - main
-      - feature/check-commits
+      - feature/check-commits  # Cambia esto por la rama que deseas proteger
+  pull_request:
+    branches:
+      - main  # Cambia esto por la rama que deseas proteger
 
 jobs:
-  commitlint:
+  lint-commits:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Necesario para obtener el historial completo de commits
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: 16  # Puedes cambiar la versión de Node.js según tus necesidades
 
-      - name: Install dependencies
-        run: npm install 
+      - name: Install commitlint and conventional config
+        run: |
+          npm install --save-dev @commitlint/cli @commitlint/config-conventional
 
-      - name: Run Commitlint
-        run: npx commitlint --from=HEAD~1 --to=HEAD
+      - name: Lint commits
+        run: |
+          npx commitlint --from=HEAD~1 --to=HEAD --verbose
