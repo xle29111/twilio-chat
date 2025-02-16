@@ -34,8 +34,10 @@ jobs:
       - name: Add Husky hooks
         working-directory: ./my-project
         run: |
-          npx husky add .husky/commit-msg "npx --no-install commitlint --edit $1"
-          npx husky add .husky/pre-push "npx --no-install commitlint --from=origin/main --to=HEAD"
+          echo 'npx --no-install commitlint --edit $1' > .husky/commit-msg
+          chmod +x .husky/commit-msg
+          echo 'npx --no-install commitlint --from=origin/main --to=HEAD' > .husky/pre-push
+          chmod +x .husky/pre-push
 
       - name: Lint commits
         working-directory: ./my-project
