@@ -18,7 +18,11 @@
     "twilio-run": "^4.0.3",
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-conventional": "^19.7.1",
-    "semantic-release": "^21.0.5"
+    "semantic-release": "^21.1.2",
+    "@semantic-release/commit-analyzer": "^9.0.2",
+    "@semantic-release/release-notes-generator": "^10.0.3",
+    "@semantic-release/npm": "^9.0.3",
+    "@semantic-release/github": "^8.0.5"
   },
   "engines": {
     "node": "18"

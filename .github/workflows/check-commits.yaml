@@ -3,10 +3,11 @@ name: Conventional Commits Lint and Semantic Release
 on:
   push:
     branches:
-      - feature/check-commits  # Realiza el release en la rama main
+      - feature/check-commits
   pull_request:
     branches:
-      - main  # Cambia esto por la rama que deseas proteger
+      - main       # Cambia esto por la rama que deseas proteger
+      
 
 jobs:
   lint-commits:
@@ -66,5 +67,5 @@ jobs:
       - name: Semantic Release
         working-directory: ./my-project
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         run: npm run semantic-release
