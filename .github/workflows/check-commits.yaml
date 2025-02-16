@@ -21,21 +21,20 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18  # Puedes cambiar la versión de Node.js según tus necesidades
+          node-version: 18  # Usa la versión 18 de Node.js
 
       - name: Install dependencies
-        working-directory: ./my-project  # Instala dependencias en el subdirectorio
-        run: |
-          npm install
+        working-directory: ./my-project
+        run: npm install
 
       - name: Configure Husky
-        run: |  # Configura Husky en la raíz del repositorio
-          cd my-project
-          npx husky init ../.husky  # Inicializa Husky en la raíz
-          npx husky add ../.husky/commit-msg "cd my-project && npx commitlint --edit $1"
-          npx husky add ../.husky/pre-push "cd my-project && npx commitlint --from=origin/main --to=HEAD"
+        working-directory: ./my-project
+        run: |
+          npx husky install
+          npx husky set .husky/commit-msg "npx commitlint --edit $1"
+          npx husky set .husky/pre-push "npx commitlint --from=origin/main --to=HEAD"
 
       - name: Lint commits
-        working-directory: ./my-project  # Ejecuta commitlint en el subdirectorio
+        working-directory: ./my-project
         run: |
           npx commitlint --from=HEAD~1 --to=HEAD --verbose

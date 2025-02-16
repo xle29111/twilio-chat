@@ -5,13 +5,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "twilio-run",
-    "deploy": "twilio-run deploy"
+    "deploy": "twilio-run deploy",
+    "prepare": "husky"
   },
   "dependencies": {
-    "twilio": "5.0.3",
-    "@twilio/runtime-handler": "2.0.0"
+    "@twilio/runtime-handler": "2.0.0",
+    "twilio": "5.0.3"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "twilio-run": "^4.0.3"
   },
   "engines": {
