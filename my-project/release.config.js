@@ -1,4 +1,5 @@
 module.exports = {
+
   branches: [
     { name: "main" },  // Solo la rama principal para releases
     { name: "develop", channel: "develop", prerelease: true }, // Para pre-releases
