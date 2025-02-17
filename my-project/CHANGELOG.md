@@ -1,3 +1,15 @@
+# [6.0.0](https://github.com/xle29111/twilio-chat/compare/v5.1.0...v6.0.0) (2025-02-17)
+
+
+### Features
+
+* **api:** migrate to new api version ([042e0dd](https://github.com/xle29111/twilio-chat/commit/042e0dd26c86f247b4933015186e6a90f4d4ee4b))
+
+
+### BREAKING CHANGES
+
+* **api:** Old API endpoints are removed
+
 # [5.1.0](https://github.com/xle29111/twilio-chat/compare/v5.0.1...v5.1.0) (2025-02-17)
 
 
