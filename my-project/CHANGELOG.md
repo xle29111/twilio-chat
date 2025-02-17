@@ -1,3 +1,10 @@
+# [5.1.0](https://github.com/xle29111/twilio-chat/compare/v5.0.1...v5.1.0) (2025-02-17)
+
+
+### Features
+
+* **auth:** add jwt authentication ([71ca54a](https://github.com/xle29111/twilio-chat/commit/71ca54abdc85b2afe6d0571491802693730ae86e))
+
 ## [5.0.1](https://github.com/xle29111/twilio-chat/compare/v5.0.0...v5.0.1) (2025-02-17)
 
 
