@@ -1,3 +1,27 @@
+# [7.0.0](https://github.com/xle29111/twilio-chat/compare/v6.1.0...v7.0.0) (2025-02-17)
+
+
+### Bug Fixes
+
+* **api:** resolve issue with null response ([d5fc713](https://github.com/xle29111/twilio-chat/commit/d5fc71333b0eb0bc412e285fa90fb6a9fd130f24))
+* **api:** resolve issue with null response ([37ed11d](https://github.com/xle29111/twilio-chat/commit/37ed11dc1d4d31173a0be1ab084d229a435171f0))
+* **form:** editing issue with combo box list ([87de848](https://github.com/xle29111/twilio-chat/commit/87de8480bd5341fbace01ea475f4ca6b717d8e1c))
+* **form:** editing issue with combo box list ([6ddf44f](https://github.com/xle29111/twilio-chat/commit/6ddf44f456740d71416d3d16ac14f988628b980c))
+
+
+### Features
+
+* **api:** migrate to new api version ([cb58820](https://github.com/xle29111/twilio-chat/commit/cb58820dc3b42bb000b1bde7e1738f9688250933))
+* **auth:** add jwt authentication ([2e3c757](https://github.com/xle29111/twilio-chat/commit/2e3c757ea705c0e0b75362ec5a14bb3635955a97))
+* **auth:** add jwt authentication  authentication ([8b3ca9b](https://github.com/xle29111/twilio-chat/commit/8b3ca9bbf1d2b5efad69f7c214d72e5df1a84857))
+* **calls:** add call application ([21bd9b0](https://github.com/xle29111/twilio-chat/commit/21bd9b00fa0bca67b54e5d93196732cb8370ac06))
+* **calls:** add call application authentication ([ed1a8ff](https://github.com/xle29111/twilio-chat/commit/ed1a8fff48da8670231418d9d74a26d2d7646036))
+
+
+### BREAKING CHANGES
+
+* **api:** Old API endpoints are removed
+
 # [6.1.0](https://github.com/xle29111/twilio-chat/compare/v6.0.1...v6.1.0) (2025-02-17)
 
 
