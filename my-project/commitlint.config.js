@@ -10,7 +10,7 @@ module.exports = {
     "scope-empty": [2, "never"],
     "subject-case": [2, "always", "lower-case"], 
     "subject-empty": [2, "never"],
-    "subject-min-length": [2, "always", 22],  
+    "subject-min-length": [2, "always", 20],  
     "header-max-length": [2, "always", 100]
   }
 };
