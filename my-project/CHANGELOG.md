@@ -1,3 +1,10 @@
+## [5.0.1](https://github.com/xle29111/twilio-chat/compare/v5.0.0...v5.0.1) (2025-02-17)
+
+
+### Bug Fixes
+
+* **api:** resolve issue with null response ([e7701c0](https://github.com/xle29111/twilio-chat/commit/e7701c0b84d45afe170c17026f268228eb9f204e))
+
 # [5.0.0](https://github.com/xle29111/twilio-chat/compare/v4.2.2...v5.0.0) (2025-02-16)
 
 
