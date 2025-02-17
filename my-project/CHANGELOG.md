@@ -1,3 +1,12 @@
+## [6.0.1](https://github.com/xle29111/twilio-chat/compare/v6.0.0...v6.0.1) (2025-02-17)
+
+
+### Bug Fixes
+
+* **api:** resolve issue with null response ([b9be6ef](https://github.com/xle29111/twilio-chat/commit/b9be6effdb72c2d72c4c34a3786bd6c6200e9717))
+* resolve issue with null response ([ccd64be](https://github.com/xle29111/twilio-chat/commit/ccd64beb553c5e00aba4ba8ec9f7f229b4c9111f))
+* resolve issue with null response ([6bb4e53](https://github.com/xle29111/twilio-chat/commit/6bb4e53ef8d7786a28a6ca24a3a4bdeafb972efb))
+
 # [6.0.0](https://github.com/xle29111/twilio-chat/compare/v5.1.0...v6.0.0) (2025-02-17)
 
 
