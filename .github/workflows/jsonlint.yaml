@@ -1,0 +1,32 @@
+name: Validate package.json
+
+on:
+  push:
+    branches:
+      - feature/check-commits
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-json:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Validate package.json
+        run: |
+          sudo apt-get install jq
+          if jq . < package.json > /dev/null 2>&1; then
+            echo "package.json is valid JSON."
+          else
+            echo "package.json is not valid JSON."
+            exit 1
+          fi
