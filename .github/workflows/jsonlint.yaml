@@ -21,12 +21,15 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install jsonlint
+        run: npm install -g jsonlint
+
       - name: Validate package.json
         run: |
-          sudo apt-get install jq
-          if jq . < package.json > /dev/null 2>&1; then
+          if jsonlint package.json -q; then
             echo "package.json is valid JSON."
           else
             echo "package.json is not valid JSON."
+            jsonlint package.json
             exit 1
           fi
