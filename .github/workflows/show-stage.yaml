@@ -7,7 +7,7 @@ on:
 
 jobs:
   print_stage_variable:
-    environment: DEVELOP  # Reference the environment named DEVELOP
+    environment: develop  # Reference the environment named DEVELOP
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
