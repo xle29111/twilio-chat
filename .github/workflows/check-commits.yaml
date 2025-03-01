@@ -3,13 +3,14 @@ name: Conventional Commits Lint and Semantic Release
 on:
   push:
     branches:
-      - 'feature/*'  # Cambia esto por la rama que deseas proteger
+      - 'feature/*'
+      - 'main'  # Cambia esto por la rama que deseas proteger
        # Cambia esto por la rama que deseas proteger
       
 
 jobs:
   lint-commits:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest 
 
     steps:
       - name: Checkout code
