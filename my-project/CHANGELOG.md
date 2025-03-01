@@ -1,3 +1,14 @@
+## [7.0.1](https://github.com/xle29111/twilio-chat/compare/v7.0.0...v7.0.1) (2025-03-01)
+
+
+### Bug Fixes
+
+* **check-commits:** adding blanc space to simulate changes ([403888e](https://github.com/xle29111/twilio-chat/commit/403888e15fe9d9b553829043639cf91a5f1d0788))
+* **commitlint.js:** Deleting ci,cd from commitlint.js ([6e8504f](https://github.com/xle29111/twilio-chat/commit/6e8504f2ae1aa875245a04d8437d2e32fa609a44))
+* **commitlint:** Deleting ci, cd from commitlint.js ([d1765cd](https://github.com/xle29111/twilio-chat/commit/d1765cd1838da896ea51f1c51614e9b6009e20ac))
+* **commits:** fixing release tag for creation ([a084285](https://github.com/xle29111/twilio-chat/commit/a084285780ae6b868391431ec063954928287b53))
+* **coomitlint.,js:** fixing commit comments ([99702d1](https://github.com/xle29111/twilio-chat/commit/99702d13041c838fb1dc8e51092291f65650f1f8))
+
 # [7.0.0](https://github.com/xle29111/twilio-chat/compare/v6.1.0...v7.0.0) (2025-02-17)
 
 
