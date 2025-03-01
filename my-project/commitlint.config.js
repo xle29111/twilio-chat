@@ -3,7 +3,7 @@ module.exports = {
   rules: {
     "type-enum": [
       2,
-      "always",
+      "always", 
       ["feat", "fix", "docs", "style", "refactor", "test", "chore"]
     ],
     "scope-case": [2, "always", "lower-case"],
