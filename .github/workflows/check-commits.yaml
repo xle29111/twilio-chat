@@ -3,7 +3,7 @@ name: Conventional Commits Lint and Semantic Release
 on:
   push:
     branches:
-      - main
+      - 'feature/*'  # Cambia esto por la rama que deseas proteger
        # Cambia esto por la rama que deseas proteger
       
 
