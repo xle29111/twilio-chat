@@ -11,12 +11,15 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v2
       with:
         fetch-depth: 0  # Fetch all history for all tags and branches
 
     - name: Identify feature branch and create new tag
       run: |
+        # Fetch all branches
+        git fetch --all
+
         # Identify the feature branch
         FEATURE_BRANCH=$(git branch --contains $(git rev-parse HEAD) | grep 'feature/' | sed 's/* //')
         
