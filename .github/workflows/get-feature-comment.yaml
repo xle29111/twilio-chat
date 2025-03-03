@@ -17,35 +17,16 @@ jobs:
       - name: Get merged branch name
         id: merged_branch
         run: |
-          BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
-          echo "MERGED_BRANCH=$BRANCH" >> $GITHUB_ENV
+          MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%s' | grep -oE 'feature/[a-zA-Z0-9._-]+' || echo "")
+          echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
 
-      - name: Get latest commit message from feature branch
-        id: commit_message
+      - name: Validate merged branch
         run: |
-          if [ -n "$MERGED_BRANCH" ]; then
-            COMMIT_MESSAGE=$(git log -1 --pretty=%B origin/${MERGED_BRANCH})
-            echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          else
-            echo "No merged branch detected."
+          if [ -z "$MERGED_BRANCH" ]; then
+            echo "No feature branch detected. Exiting..."
             exit 1
           fi
 
-      - name: Get latest tag
-        id: latest_tag
-        run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
-          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
-
-      - name: Generate new tag
-        id: new_tag
-        run: |
-          latest_tag="${LATEST_TAG}"
-          IFS='.' read -r -a parts <<< "${latest_tag#v}"
-          new_tag="v${parts[0]}.$((parts[1] + 1)).0"
-          echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
-
-      - name: Create and push new tag
-        run: |
-          git tag -a $NEW_TAG -m "$COMMIT_MESSAGE"
-          git push origin $NEW_TAG
+      - name: Get latest commit message from feature branch
+        id: commit_message
+        run: 
