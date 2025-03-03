@@ -3,13 +3,14 @@ name: Conventional Commits Lint and Semantic Release
 on:
   push:
     branches:
-      - main
+      - 'feature/*'
+      - 'main'  # Cambia esto por la rama que deseas proteger
        # Cambia esto por la rama que deseas proteger
       
 
 jobs:
   lint-commits:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest 
 
     steps:
       - name: Checkout code
@@ -49,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Necesario para obtener el historial completo de commits
 
