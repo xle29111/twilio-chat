@@ -15,23 +15,26 @@ jobs:
       with:
         fetch-depth: 0  # Fetch all history for all tags and branches
 
+    - name: Fetch all branches and tags
+      run: git fetch --all --tags
+
     - name: Identify feature branch and create new tag
       run: |
-        # Fetch all branches and tags
-        git fetch --all --tags
-
-        # Identify the feature branch
-        FEATURE_BRANCH=$(git branch -r --contains $(git rev-parse HEAD) | grep 'origin/feature/' | sed 's/origin\///')
+        # Identify the merge commit
+        MERGE_COMMIT=$(git log --merges -1 --pretty=format:'%H')
         
-        if [ -z "$FEATURE_BRANCH" ]; then
+        # Identify the feature branch that was merged
+        FEATURE_BRANCH=$(git name-rev --name-only $MERGE_COMMIT^2)
+        
+        if [[ "$FEATURE_BRANCH" != feature/* ]]; then
           echo "No feature branch found for the current commit."
           exit 1
         fi
         
         echo "Feature branch: $FEATURE_BRANCH"
-
+        
         # Get the last commit message from the feature branch
-        LAST_COMMIT_MSG=$(git log -1 --pretty=format:'%s' origin/${FEATURE_BRANCH})
+        LAST_COMMIT_MSG=$(git log -1 --pretty=format:'%s' $FEATURE_BRANCH)
         
         # Get the latest tag
         LATEST_TAG=$(git describe --tags --abbrev=0)
