@@ -17,12 +17,19 @@ jobs:
 
     - name: Identify feature branch and create new tag
       run: |
-        # Fetch all branches
-        git fetch --all
+        # Fetch all branches and tags
+        git fetch --all --tags
 
         # Identify the feature branch
-        FEATURE_BRANCH=$(git branch --contains $(git rev-parse HEAD) | grep 'feature/' | sed 's/* //')
+        FEATURE_BRANCH=$(git branch -r --contains $(git rev-parse HEAD) | grep 'origin/feature/' | sed 's/origin\///')
         
+        if [ -z "$FEATURE_BRANCH" ]; then
+          echo "No feature branch found for the current commit."
+          exit 1
+        fi
+        
+        echo "Feature branch: $FEATURE_BRANCH"
+
         # Get the last commit message from the feature branch
         LAST_COMMIT_MSG=$(git log -1 --pretty=format:'%s' origin/${FEATURE_BRANCH})
         
