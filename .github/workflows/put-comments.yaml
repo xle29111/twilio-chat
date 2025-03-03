@@ -13,18 +13,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Get last commit message from feature branch
-        id: get_commit_message
+      - name: Set up Git user
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Tag with Commit Message
+        run: |
+          # Get the last commit message
           LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo "LAST_COMMIT_MESSAGE=${LAST_COMMIT_MESSAGE}" >> $GITHUB_ENV
-
-      - name: Create Tag
-        id: create_tag
-        run: |
+          # Filter out the merge commit message
+          if [[ "${LAST_COMMIT_MESSAGE}" == Merge* ]]; then
+            LAST_COMMIT_MESSAGE=$(git log -2 --pretty=%B | tail -1)
+          fi
+          # Create and push the tag
           TAG_NAME="v$(date +'%Y%m%d%H%M%S')"
-          git tag -a "${TAG_NAME}" -m "${{ env.LAST_COMMIT_MESSAGE }}"
+          git tag -a "${TAG_NAME}" -m "${LAST_COMMIT_MESSAGE}"
           git push origin "${TAG_NAME}"
-
-      - name: Output Tag Name
-        run: echo "Created Tag ${{ steps.create_tag.outputs.tag_name }}"
+          echo "Created Tag ${TAG_NAME} with message: ${LAST_COMMIT_MESSAGE}"
