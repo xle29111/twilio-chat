@@ -25,26 +25,26 @@ jobs:
       - name: Get merged branch name
         id: merged_branch
         run: |
-          MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%s' | grep -oE 'feature/[a-zA-Z0-9._-]+' || echo "")
+          MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
           echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
 
       - name: Validate merged branch
         run: |
           if [ -z "$MERGED_BRANCH" ]; then
-            echo "No feature branch detected. Exiting..."
+            echo "No merged branch detected. Exiting..."
             exit 1
           fi
 
-      - name: Get latest commit message from feature branch
+      - name: Get latest commit message from merged branch
         id: commit_message
         run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B origin/${MERGED_BRANCH} 2>/dev/null || echo "No commit message found")
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGED_BRANCH 2>/dev/null || echo "No commit message found")
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
 
       - name: Get latest tag
         id: latest_tag
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
+          LATEST_TAG=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || echo 'v0.0.0')
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
       - name: Generate new tag
