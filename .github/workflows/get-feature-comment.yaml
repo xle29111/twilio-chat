@@ -1,4 +1,4 @@
-name: Tag on Push to Develop
+name: Tag on Push to Develop 
 
 on:
   push:
@@ -6,33 +6,58 @@ on:
       - develop
 
 jobs:
-  tag-on-push:
+  create-tag:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0  # Fetch all history for all tags and branches
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Identify feature branch and create new tag
-      run: |
-        # Fetch all branches
-        git fetch --all
+      - name: Get GitHub user info
+        id: github_user
+        run: |
+          GIT_NAME=$(git log -1 --pretty=format:'%an')
+          GIT_EMAIL=$(git log -1 --pretty=format:'%ae')
+          echo "GIT_NAME=$GIT_NAME" >> $GITHUB_ENV
+          echo "GIT_EMAIL=$GIT_EMAIL" >> $GITHUB_ENV
 
-        # Identify the feature branch
-        FEATURE_BRANCH=$(git branch --contains $(git rev-parse HEAD) | grep 'feature/' | sed 's/* //')
-        
-        # Get the last commit message from the feature branch
-        LAST_COMMIT_MSG=$(git log -1 --pretty=format:'%s' origin/${FEATURE_BRANCH})
-        
-        # Get the latest tag
-        LATEST_TAG=$(git describe --tags --abbrev=0)
-        
-        # Create a new tag
-        NEW_TAG=$(echo $LATEST_TAG | awk -F. -v OFS=. '{$NF += 1 ; print}')
-        git tag -a "$NEW_TAG" -m "$LAST_COMMIT_MSG"
-        git push origin "$NEW_TAG"
-        
-        # Output the new tag
-        echo "New tag $NEW_TAG created with message: $LAST_COMMIT_MSG"
+      - name: Get merged branch name
+        id: merged_branch
+        run: |
+          MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
+          echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
+
+      - name: Validate merged branch
+        run: |
+          if [ -z "$MERGED_BRANCH" ]; then
+            echo "No merged branch detected. Exiting..."
+            exit 1
+          fi
+
+      - name: Get latest commit message from merged branch
+        id: commit_message
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGED_BRANCH 2>/dev/null || echo "No commit message found")
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      - name: Get latest tag
+        id: latest_tag
+        run: |
+          LATEST_TAG=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n 1 || echo 'v0.0.0')
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Generate new tag
+        id: new_tag
+        run: |
+          latest_tag="${LATEST_TAG}"
+          IFS='.' read -r -a parts <<< "${latest_tag#v}"
+          new_tag="v${parts[0]}.$((parts[1] + 1)).0"
+          echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
+
+      - name: Create and push new tag
+        run: |
+          git config --global user.name "$GIT_NAME"
+          git config --global user.email "$GIT_EMAIL"
+          git tag -a $NEW_TAG -m "$COMMIT_MESSAGE"
+          git push origin $NEW_TAG
