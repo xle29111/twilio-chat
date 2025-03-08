@@ -3,7 +3,8 @@ name: Tag on Push to Develop
 on:
   push:
     branches:
-      - develop
+      - 'develop'
+      - 'feature/*'
 
 jobs:
   create-tag:
