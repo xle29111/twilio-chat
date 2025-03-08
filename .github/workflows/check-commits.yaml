@@ -1,4 +1,4 @@
-name: Conventional Commits Lint and Semantic Release
+name: Conventional Commits Lint and Semantic Release 
 
 on:
   push:
