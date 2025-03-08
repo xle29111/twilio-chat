@@ -13,4 +13,4 @@ module.exports = {
     "subject-min-length": [2, "always", 20], // Exige un mínimo de 20 caracteres en el subject
     "header-max-length": [2, "always", 100] // Limita el header a 100 caracteres
   }
-};
+}; 
