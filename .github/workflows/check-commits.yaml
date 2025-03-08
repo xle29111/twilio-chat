@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - 'feature/*'
-      - 'main'  # Cambia esto por la rama que deseas proteger
-       # Cambia esto por la rama que deseas proteger
-      
+      - 'main'  # La rama principal donde se ejecutará el release
 
 jobs:
   lint-commits:
@@ -47,6 +45,7 @@ jobs:
   release:
     needs: [lint-commits]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Solo se ejecuta si es la rama main
 
     steps:
       - name: Checkout code
