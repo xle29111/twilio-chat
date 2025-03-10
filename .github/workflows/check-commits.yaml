@@ -1,4 +1,4 @@
-name: Conventional Commits Lint and Semantic Release
+name: Conventional Commits Lint and Semantic Release 
 
 on:
   push:
@@ -8,7 +8,8 @@ on:
 
 jobs:
   lint-commits:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/feature/')  # Solo se ejecuta en feature/*
 
     steps:
       - name: Checkout code

@@ -1,0 +1,29 @@
+name: Check Feature Branch Sync
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para obtener todo el historial de Git
+
+      - name: Check if feature branch is up-to-date with main
+        run: |
+          git fetch origin main
+          BASE_BRANCH="origin/main"
+          FEATURE_BRANCH="origin/${{ github.head_ref }}"
+
+          # Verifica si la feature branch ya contiene todos los commits de main
+          if git merge-base --is-ancestor $BASE_BRANCH $FEATURE_BRANCH; then
+            echo "✅ La rama feature está actualizada con main. Se puede hacer merge."
+          else
+            echo "❌ La rama feature no está sincronizada con main. Debes hacer un rebase o merge primero."
+            exit 1
+          fi
