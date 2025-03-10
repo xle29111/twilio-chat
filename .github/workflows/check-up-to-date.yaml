@@ -1,4 +1,4 @@
-name: check-sync
+name: check-sync 
 
 on:
   pull_request:
