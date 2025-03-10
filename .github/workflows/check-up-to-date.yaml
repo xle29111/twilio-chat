@@ -1,4 +1,4 @@
-name: Check Feature Branch Sync 
+name: Check Feature Branch Sync
 
 on:
   pull_request:
