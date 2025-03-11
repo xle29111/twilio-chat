@@ -3,7 +3,7 @@ name: check-sync
 on:
   pull_request:
     branches:
-      - main
+      - main 
 
 jobs:
   check-sync:
