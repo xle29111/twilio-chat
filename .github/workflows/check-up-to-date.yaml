@@ -1,4 +1,4 @@
-name: check-sync 
+name: check-sync
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Necesario para obtener todo el historial de Git
+          fetch-depth: 0  
 
       - name: Check if feature branch is up-to-date with main
         run: |
