@@ -1,0 +1,29 @@
+name: Deploy Manual con Concurrencia
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Selecciona el entorno'
+        required: true
+        type: choice
+        options:
+          - DEV
+          - ST
+          - RT
+
+env:
+  ENVIRONMENT: ${{ github.event.inputs.env }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: CD-${{ vars.STAGE }}
+      cancel-in-progress: false
+    steps:
+      - name: Imprimir Nombre del Grupo de Concurrencia y STAGE
+        run: |
+          echo "Nombre del grupo de concurrencia: deploy-${{ vars.STAGE }}"
+          echo "Valor de la variable STAGE: ${{ vars.STAGE }}"
+          echo "Valor de la variable ENVIRONMENT: ${{ vars.ENVIRONMENT }}"
