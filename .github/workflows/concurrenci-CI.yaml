@@ -1,19 +1,16 @@
-name: Manual Workflow with Concurrency Group
+name: Concurrencia Manual
 
 on:
   workflow_dispatch:  # Permite ejecutar el workflow manualmente
 
 jobs:
-  print-group-name:
+  concurrencia:
     runs-on: ubuntu-latest
-
     concurrency:
-      group: ci-${{ github.ref }}  # Expresión correctamente cerrada
-      cancel-in-progress: false    # Typo corregido
-
+      group: ci-${{ github.ref }}
+      cancel-in-progress: false
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Print Concurrency Group Name
-        run: echo "El nombre del grupo de concurrencia es: ci-${{ github.ref }}"
+      - name: Imprimir Nombre del Grupo de Concurrencia
+        run: |
+          echo "Nombre del grupo de concurrencia: ci-${{ github.ref }}"
+          echo "El valor de github.ref es: ${{ github.ref }}"  # Imprime el valor de github.ref
