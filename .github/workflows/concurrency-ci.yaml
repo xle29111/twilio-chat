@@ -1,0 +1,14 @@
+name: Manual Workflow with Concurrency
+
+on:
+  workflow_dispatch:  # Permite ejecutar manualmente el workflow
+
+jobs:
+  test-concurrency:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Print concurrency group
+        run: echo "Concurrency Group: ci-${{ github.ref }}"
