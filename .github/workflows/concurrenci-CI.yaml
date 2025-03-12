@@ -1,0 +1,16 @@
+name: Concurrencia Manual
+
+on:
+  workflow_dispatch:  # Permite ejecutar el workflow manualmente
+
+jobs:
+  concurrencia:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Imprimir Nombre del Grupo de Concurrencia
+        run: |
+          echo "Nombre del grupo de concurrencia: ci-${{ github.ref }}"
+          echo "El valor de github.ref es: ${{ github.ref }}"  # Imprime el valor de github.ref
