@@ -7,10 +7,11 @@ jobs:
   concurrencia:
     runs-on: ubuntu-latest
     concurrency:
-      group: ci-${{ github.ref }}
+      group: ci-${{ github.head_ref || github.ref_name }}
       cancel-in-progress: false
     steps:
       - name: Imprimir Nombre del Grupo de Concurrencia
         run: |
-          echo "Nombre del grupo de concurrencia: ci-${{ github.ref }}"
-          echo "El valor de github.ref es: ${{ github.ref }}"  # Imprime el valor de github.ref
+          echo "Nombre del grupo de concurrencia: ci-${{ github.head_ref || github.ref_name }}"
+          echo "El valor de github.head_ref es: ${{ github.head_ref }}"
+          echo "El valor de github.ref_name es: ${{ github.ref_name }}"
