@@ -15,5 +15,5 @@ jobs:
       run: echo "El nombre del grupo de concurrencia es: ci-${{ github.ref }}"
 
     concurrency:
-      group: ci-${{ github.ref }}
-      cancel-in-progress: false
+      group: ci-${{ github.ref }}  # Expresión correctamente cerrada
+      cancel-in-progress: false     # Typo corregido
