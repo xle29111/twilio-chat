@@ -9,11 +9,11 @@ jobs:
 
     concurrency:
       group: ci-${{ github.ref }}  # Expresión correctamente cerrada
-      cancel-in-progress: false     # Typo corregido
+      cancel-in-progress: false    # Typo corregido
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Print Concurrency Group Name
-      run: echo "El nombre del grupo de concurrencia es: ci-${{ github.ref }}"
+      - name: Print Concurrency Group Name
+        run: echo "El nombre del grupo de concurrencia es: ci-${{ github.ref }}"
