@@ -6,24 +6,21 @@ on:
       env:
         description: 'Selecciona el entorno'
         required: true
-        type: choice
+        type: string
         options:
           - DEV
           - ST
           - RT
 
-env:
-  ENVIRONMENT: ${{ github.event.inputs.env }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.env }}
     concurrency:
-      group: CD-${{ vars.STAGE }}
+      group: CD-${{ github.event.inputs.env }}
       cancel-in-progress: false
     steps:
-      - name: Imprimir Nombre del Grupo de Concurrencia y STAGE
+      - name: Imprimir Nombre del Grupo de Concurrencia y ENV
         run: |
-          echo "Nombre del grupo de concurrencia: deploy-${{ vars.STAGE }}"
-          echo "Valor de la variable STAGE: ${{ vars.STAGE }}"
-          echo "Valor de la variable ENVIRONMENT: ${{ vars.ENVIRONMENT }}"
+          echo "Nombre del grupo de concurrencia: CD-${{ github.event.inputs.env }}"
+          echo "Valor de la variable ENV: ${{ github.event.inputs.env }}"
