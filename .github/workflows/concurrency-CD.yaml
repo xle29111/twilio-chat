@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.env }}
     concurrency:
-      group: CD-${{ github.event.inputs.env }}
+      group: CD-${{ vars.STAGE }}
       cancel-in-progress: false
     steps:
       - name: Imprimir Nombre del Grupo de Concurrencia y ENV
         run: |
-          echo "Nombre del grupo de concurrencia: CD-${{ github.event.inputs.env }}"
-          echo "Valor de la variable ENV: ${{ github.event.inputs.env }}"
+          echo "Nombre del grupo de concurrencia: CD-${{ vars.STAGE }}"
+          echo "Valor de la variable ENV: ${{ vars.STAGE }}"
