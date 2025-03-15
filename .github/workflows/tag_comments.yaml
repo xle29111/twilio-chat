@@ -23,7 +23,7 @@ jobs:
       - name: Get latest commit message from merged branch
         id: commit_message
         run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGED_BRANCH_NAME 2>/dev/null || echo "No commit message found")
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B origin/$MERGED_BRANCH_NAME 2>/dev/null || echo "No commit message found")
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
 
       - name: Get PR author
