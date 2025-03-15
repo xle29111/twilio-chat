@@ -18,9 +18,12 @@ jobs:
         id: merged_branch
         run: |
           MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
+          MERGED_BRANCH_NAME=$(git branch -r --contains $MERGED_BRANCH | awk -F'/' '{print $2}' | head -n 1 || echo "unknown")
           echo "MERGED_BRANCH=$MERGED_BRANCH"
+          echo "MERGED_BRANCH_NAME=$MERGED_BRANCH_NAME"
           echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
-          echo "Merged branch: $MERGED_BRANCH"
+          echo "MERGED_BRANCH_NAME=$MERGED_BRANCH_NAME" >> $GITHUB_ENV
+          echo "Merged branch: $MERGED_BRANCH_NAME"
 
       - name: Get PR author
         run: |
@@ -30,11 +33,14 @@ jobs:
       - name: Get modified folders
         run: |
           CHANGED_FILES=$(git diff --name-only origin/develop $MERGED_BRANCH | grep '^my-project/resources/' || true)
+          echo "Changed files: $CHANGED_FILES"
           if [ -n "$CHANGED_FILES" ]; then
             MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | awk -F'/' '{print $3}' | sort -u | paste -sd ', ' - | sed 's/[[:space:]]*$//')
             echo "MODIFIED_FOLDERS=${MODIFIED_FOLDERS//$'\n'/}" >> $GITHUB_ENV
+            echo "Modified folders: $MODIFIED_FOLDERS"
           else
             echo "MODIFIED_FOLDERS=None" >> $GITHUB_ENV
+            echo "Modified folders: None"
           fi
 
       - name: Extract package version
