@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - 'develop'
-      - 'feature/*'
+  
 
 jobs:
   create-tag:
@@ -28,6 +28,7 @@ jobs:
         run: |
           MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
           echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
+          echo "Merged branch: $MERGED_BRANCH" 
 
       - name: Validate merged branch
         run: |
