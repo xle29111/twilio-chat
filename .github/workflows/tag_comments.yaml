@@ -16,12 +16,12 @@ jobs:
       - name: Get merged branch name and origin branch
         id: merged_branch
         run: |
-          # Obtener el hash del branch fusionado
+          # Get the hash of the merged branch.
           MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
           echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
           echo "Merged branch (hash): $MERGED_BRANCH"
 
-          # Obtener el nombre del branch origen desde el mensaje del commit de fusión
+          #Get the origin branch name from the merge commit message.
           MERGE_COMMIT_MESSAGE=$(git log --merges -n 1 --pretty=format:'%s')
           ORIGIN_BRANCH_NAME=$(echo "$MERGE_COMMIT_MESSAGE" | sed -n 's/.*from \([^ ]*\).*/\1/p')
           echo "ORIGIN_BRANCH_NAME=$ORIGIN_BRANCH_NAME" >> $GITHUB_ENV
@@ -50,7 +50,7 @@ jobs:
 
       - name: Extract package version
         run: |
-          PACKAGE_VERSION=$(jq -r .version my-project/package.json)
+          PACKAGE_VERSION=$(jq -r .version package.json)
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
 
       - name: Get latest tag
