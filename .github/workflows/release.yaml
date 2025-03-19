@@ -1,0 +1,85 @@
+name: Release Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_release_tag:
+        description: 'New release tag'
+        required: true
+        default: 'V1.1.4'
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - pre-release
+          - release
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Read latest release from file
+        run: |
+          latest_release=$(cat my-project/latest_release.txt)
+          echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV
+
+      - name: Detect changes
+        run: |
+          changes=$(git diff --name-only $LATEST_RELEASE ${{ github.event.inputs.new_release_tag }} -- my-project/resources | awk -F/ '{print $3}' | sort -u)
+          echo "CHANGES=$changes" >> $GITHUB_ENV
+          echo "Detected changes: $changes"
+
+  update-files-and-release:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Update latest_release.txt
+        run: |
+          echo "${{ github.event.inputs.new_release_tag }}" > my-project/latest_release.txt
+          git add my-project/latest_release.txt
+          git commit -m "Update latest_release.txt to ${{ github.event.inputs.new_release_tag }}"
+          git push origin main
+
+      - name: Update changelog
+        if: github.event.inputs.release_type == 'release'
+        run: |
+          latest_release=${{ env.LATEST_RELEASE }}
+          new_release=${{ github.event.inputs.new_release_tag }}
+          release_date=$(date -u +"%Y-%m-%d")
+          echo "## [$new_release](https://github.com/${{ github.repository }}/compare/$latest_release...$new_release) ($release_date)" >> my-project/changelog.md
+          echo "" >> my-project/changelog.md
+          
+          commit_messages=$(git log $latest_release..$new_release --pretty=format:"* **%s** ([%h](https://github.com/${{ github.repository }}/commit/%H))")
+          echo "### Commits" >> my-project/changelog.md
+          echo "$commit_messages" >> my-project/changelog.md
+          echo "" >> my-project/changelog.md
+          
+          git add my-project/changelog.md
+          git commit -m "Update changelog for $new_release"
+          git push origin main
+
+      - name: Create or update release
+        run: |
+          if [ "${{ github.event.inputs.release_type }}" == "pre-release" ]; then
+            gh release create ${{ github.event.inputs.new_release_tag }} --prerelease
+          else
+            if gh release view ${{ github.event.inputs.new_release_tag }}; then
+              gh release edit ${{ github.event.inputs.new_release_tag }} --prerelease=false
+            else
+              gh release create ${{ github.event.inputs.new_release_tag }}
+            fi
+          fi
