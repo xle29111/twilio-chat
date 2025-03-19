@@ -53,7 +53,7 @@ jobs:
           echo "${{ github.event.inputs.new_release_tag }}" > my-project/latest_release.txt
           git add my-project/latest_release.txt
           git commit -m "Update latest_release.txt to ${{ github.event.inputs.new_release_tag }}"
-          git push origin main
+          git push https://xle29111:${{ secrets.PAT }}@github.com/${{ github.repository }}.git main
 
       - name: Update changelog
         if: github.event.inputs.release_type == 'release'
@@ -71,7 +71,7 @@ jobs:
           
           git add my-project/changelog.md
           git commit -m "Update changelog for $new_release"
-          git push origin main
+          git push https://xle29111:${{ secrets.PAT }}@github.com/${{ github.repository }}.git main
 
       - name: Create or update release
         run: |
