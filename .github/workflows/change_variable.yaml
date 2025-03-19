@@ -15,7 +15,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Print current latest_release
-        run: echo "Current latest_release: ${{ vars.LATEST_RELEASE }}"
+        run: |
+          echo "Current latest_release: ${{ vars.LATEST_RELEASE || 'Not set' }}"
 
       - name: Update latest_release
         env:
