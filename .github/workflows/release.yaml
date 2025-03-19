@@ -21,9 +21,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          show-progress: false
 
       - name: Read latest release from file
         run: |
@@ -45,6 +42,11 @@ jobs:
         with:
           fetch-depth: 0
           show-progress: false
+
+      - name: Set Git user
+        run: |
+          git config --global user.name "xle29111"
+          git config --global user.email "xle29111@example.com"
 
       - name: Update latest_release.txt
         run: |
