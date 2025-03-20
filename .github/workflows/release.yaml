@@ -15,11 +15,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Get latest release tag
+    - name: Get latest release
       id: get_latest_release
-      shell: bash
       run: |
-        latest_release=$(git describe --tags `git rev-list --tags --max-count=1 --no-merges --exclude="*-pre-release"`)
+        latest_release=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 | awk '{print $1}')
         echo "Latest release: $latest_release"
         echo "::set-output name=latest_release::$latest_release"
 
