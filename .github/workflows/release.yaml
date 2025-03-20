@@ -17,10 +17,12 @@ jobs:
 
     - name: Get latest release
       id: get_latest_release
+      env:
+        GH_TOKEN: ${{ github.token }}  # Autentica el CLI de GitHub
       run: |
         latest_release=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 | awk '{print $1}')
         echo "Latest release: $latest_release"
-        echo "::set-output name=latest_release::$latest_release"
+        echo "latest_release=$latest_release" >> $GITHUB_OUTPUT  # Usar archivo de entorno en lugar de set-output
 
     - name: Detect changes between tags
       id: detect_changes
