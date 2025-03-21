@@ -47,6 +47,11 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        # Crea un archivo temporal para las notas del release
+        echo -e "Changes detected in this release:\n${{ env.CHANGES }}" > release_notes.txt
+    
+        # Usa el archivo en el release
         gh release create ${{ github.event.inputs.new_release_tag }} \
           --title "${{ github.event.inputs.new_release_tag }}" \
-          --notes "Changes detected in this release:\n${{ env.CHANGES }}"
+          --notes-file release_notes.txt
+
