@@ -20,7 +20,7 @@ jobs:
     - name: Get latest release
       id: get_latest_release
       env:
-        GH_TOKEN: ${{ github.token }}  # Autentica el CLI de GitHub
+        GH_TOKEN: ${{ github.token }}  
       run: |
         latest_release=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 | awk '{print $1}')
         echo "Latest release: $latest_release"
@@ -43,12 +43,10 @@ jobs:
         echo "Detected changes: $changes"
 
     - name: Create new release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.event.inputs.new_release_tag }}
-        release_name: ${{ github.event.inputs.new_release_tag }}
+        name: ${{ github.event.inputs.new_release_tag }}
         body: |
           Changes detected in this release:
           ${{ env.CHANGES }}
