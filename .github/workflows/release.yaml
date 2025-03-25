@@ -40,10 +40,13 @@ jobs:
         
         echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %s" -- my-project/resources)
+        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %s" -- my-project/resources | awk '{print "•\t" $0}' | paste -sd "\n" -)
 
-        echo "CHANGES=$changes" >> $GITHUB_ENV
-        echo "Detected changes: $changes"
+        # Escapa los caracteres especiales antes de escribir en el archivo de entorno
+        escaped_changes=$(echo "$changes" | sed 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g')
+
+        echo "CHANGES=$escaped_changes" >> $GITHUB_ENV
+        echo "Detected changes: $escaped_changes"
 
     - name: Create release notes
       id: create_release_notes
@@ -58,9 +61,7 @@ jobs:
     
         # Agrega los tags y los cambios en el formato deseado
         echo -e "\n$new_release_tag" >> release_notes.txt
-        echo "$changes" | while read -r line; do
-          echo -e "•\t$line" >> release_notes.txt
-        done
+        echo "$changes" >> release_notes.txt
 
         # Muestra el contenido del archivo de notas del release
         cat release_notes.txt
