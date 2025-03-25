@@ -40,8 +40,8 @@ jobs:
         
         echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        # Genera los cambios con un formato más simple
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"- %s" -- my-project/resources)
+        # Genera los cambios con los encabezados de los tags
+        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%d %s" -- my-project/resources)
 
         # Escapa los caracteres especiales
         changes="${changes//'%'/'%25'}"
