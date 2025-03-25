@@ -28,13 +28,14 @@ jobs:
     - name: Detect changes between tags
       shell: bash
       run: |
+        set -o pipefail
         new_release_tag=${{ github.event.inputs.new_release_tag }}
         latest_release=$LATEST_RELEASE
 
         echo "Comparing changes between $latest_release and $new_release_tag..."
 
         # Obtener todos los tags entre las versiones
-        all_tags=$(git tag --merged $new_release_tag --sort=-v:refname | awk -v latest="$latest_release" '$0 != latest')
+        all_tags=$(git tag --merged $new_release_tag | sort -V | awk -v latest="$latest_release" '$0 > latest')
 
         # Si no hay tags intermedios, usar solo el nuevo release
         if [ -z "$all_tags" ]; then
@@ -46,9 +47,9 @@ jobs:
         prev_tag=$latest_release
         while IFS= read -r tag; do
           if [ "$tag" != "$latest_release" ]; then
-            commit_msg=$(git log --pretty=format:"%s" $prev_tag..$tag -- my-project/resources | head -n 1)
+            commit_msg=$(git log --pretty=format:"%s" $prev_tag..$tag -- my-project/resources | head -n 1 || echo "")
             if [ -n "$commit_msg" ]; then
-              changes+="$tag\n$commit_msg\n\n"
+              changes+="$tag"$'\n'"$commit_msg"$'\n\n'
             fi
             prev_tag=$tag
           fi
@@ -56,15 +57,15 @@ jobs:
 
         # Si no hay cambios, usar el último commit
         if [ -z "$changes" ]; then
-          commit_msg=$(git log --pretty=format:"%s" -1 $new_release_tag -- my-project/resources)
-          changes="$new_release_tag\n$commit_msg\n\n"
+          commit_msg=$(git log --pretty=format:"%s" -1 $new_release_tag -- my-project/resources || echo "")
+          changes="$new_release_tag"$'\n'"$commit_msg"$'\n\n'
         fi
 
         # Codificar para GITHUB_ENV
-        encoded_changes=$(echo -e "$changes" | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' -e 's/\r/%0D/g')
+        encoded_changes=$(printf "%s" "$changes" | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' -e 's/\r/%0D/g')
         echo "CHANGES=${encoded_changes}" >> $GITHUB_ENV
         echo "Detected changes:"
-        echo -e "$changes"
+        printf "%s" "$changes"
 
     - name: Create release notes
       id: create_release_notes
@@ -78,7 +79,7 @@ jobs:
         # Crear archivo de notas
         echo "## Release Notes (${{ github.event.inputs.new_release_tag }})" > release_notes.txt
         echo "" >> release_notes.txt
-        echo -e "$changes" >> release_notes.txt
+        printf "%s" "$changes" >> release_notes.txt
 
         cat release_notes.txt
 
