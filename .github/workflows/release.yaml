@@ -21,64 +21,52 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}  
       run: |
+        # Obtiene el tag del último release
         latest_release=$(gh release view --json tagName -q '.tagName')
+
         echo "Latest release: $latest_release"
-        echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV
+        
+        # Exporta latest_release como variable de ambiente
+        echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV  
 
     - name: Detect changes between tags
       shell: bash
       run: |
-        set -o pipefail
         new_release_tag=${{ github.event.inputs.new_release_tag }}
         latest_release=$LATEST_RELEASE
 
-        echo "Comparing changes between $latest_release and $new_release_tag..."
+        echo "New release: $new_release_tag"
+        echo "Latest release: $latest_release"
+        
+        echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        # Obtener todos los tags entre las versiones (incluyendo las de inicio y fin)
-        all_tags=$(git tag --sort=-v:refname | awk -v start="$latest_release" -v end="$new_release_tag" '
-          $0 == start {in_range=1}
-          in_range {print; if ($0 == end) exit}
-        ')
+        # Genera los cambios con un formato más simple
+        changes=$(git log $latest_release..$new_release_tag --pretty=format:"- %s" -- my-project/resources)
 
-        # Verificar que tenemos tags en el rango
-        if [ -z "$all_tags" ]; then
-          echo "No tags found between $latest_release and $new_release_tag"
-          exit 1
-        fi
+        # Escapa los caracteres especiales
+        changes="${changes//'%'/'%25'}"
+        changes="${changes//$'\n'/'%0A'}"
+        changes="${changes//$'\r'/'%0D'}"
 
-        # Obtener cambios para cada tag en el rango
-        changes=""
-        prev_tag=$latest_release
-        while IFS= read -r tag; do
-          if [ "$tag" != "$latest_release" ]; then
-            commit_msg=$(git log --pretty=format:"%s" $prev_tag..$tag -- my-project/resources | head -n 1 || echo "")
-            if [ -n "$commit_msg" ]; then
-              changes+="$tag"$'\n'"$commit_msg"$'\n\n'
-            fi
-            prev_tag=$tag
-          fi
-        done <<< "$all_tags"
-
-        # Codificar para GITHUB_ENV
-        encoded_changes=$(printf "%s" "$changes" | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' -e 's/\r/%0D/g')
-        echo "CHANGES=${encoded_changes}" >> $GITHUB_ENV
-        echo "Detected changes:"
-        printf "%s" "$changes"
+        echo "CHANGES=${changes}" >> $GITHUB_ENV
+        echo "Detected changes: ${changes}"
 
     - name: Create release notes
       id: create_release_notes
       shell: bash
       run: |
-        # Decodificar cambios
+        new_release_tag=${{ github.event.inputs.new_release_tag }}
+        latest_release=$LATEST_RELEASE
         changes="${CHANGES//'%0A'/$'\n'}"
         changes="${changes//'%0D'/$'\r'}"
         changes="${changes//'%25'/'%'}"
 
-        # Crear archivo de notas
-        echo "## Changes between $LATEST_RELEASE and ${{ github.event.inputs.new_release_tag }}" > release_notes.txt
+        # Crea un archivo temporal para las notas del release
+        echo "Changes detected in this release:" > release_notes.txt
         echo "" >> release_notes.txt
-        printf "%s" "$changes" >> release_notes.txt
+        echo "$changes" >> release_notes.txt
 
+        # Muestra el contenido del archivo de notas del release
         cat release_notes.txt
 
     - name: Create new release using GitHub CLI
