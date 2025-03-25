@@ -40,13 +40,16 @@ jobs:
         
         echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %s" -- my-project/resources | awk '{print "•\t" $0}' | paste -sd "\n" -)
+        # Genera los cambios con un formato más simple
+        changes=$(git log $latest_release..$new_release_tag --pretty=format:"- %s" -- my-project/resources)
 
-        # Escapa los caracteres especiales antes de escribir en el archivo de entorno
-        escaped_changes=$(echo "$changes" | sed 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g')
+        # Escapa los caracteres especiales
+        changes="${changes//'%'/'%25'}"
+        changes="${changes//$'\n'/'%0A'}"
+        changes="${changes//$'\r'/'%0D'}"
 
-        echo "CHANGES=$escaped_changes" >> $GITHUB_ENV
-        echo "Detected changes: $escaped_changes"
+        echo "CHANGES=${changes}" >> $GITHUB_ENV
+        echo "Detected changes: ${changes}"
 
     - name: Create release notes
       id: create_release_notes
@@ -54,13 +57,13 @@ jobs:
       run: |
         new_release_tag=${{ github.event.inputs.new_release_tag }}
         latest_release=$LATEST_RELEASE
-        changes=$CHANGES
+        changes="${CHANGES//'%0A'/$'\n'}"
+        changes="${changes//'%0D'/$'\r'}"
+        changes="${changes//'%25'/'%'}"
 
         # Crea un archivo temporal para las notas del release
         echo "Changes detected in this release:" > release_notes.txt
-    
-        # Agrega los tags y los cambios en el formato deseado
-        echo -e "\n$new_release_tag" >> release_notes.txt
+        echo "" >> release_notes.txt
         echo "$changes" >> release_notes.txt
 
         # Muestra el contenido del archivo de notas del release
