@@ -34,15 +34,19 @@ jobs:
 
         echo "Comparing changes between $latest_release and $new_release_tag..."
 
-        # Obtener todos los tags entre las versiones
-        all_tags=$(git tag --merged $new_release_tag | sort -V | awk -v latest="$latest_release" '$0 > latest')
+        # Obtener todos los tags entre las versiones (incluyendo las de inicio y fin)
+        all_tags=$(git tag --sort=-v:refname | awk -v start="$latest_release" -v end="$new_release_tag" '
+          $0 == start {in_range=1}
+          in_range {print; if ($0 == end) exit}
+        ')
 
-        # Si no hay tags intermedios, usar solo el nuevo release
+        # Verificar que tenemos tags en el rango
         if [ -z "$all_tags" ]; then
-          all_tags=$new_release_tag
+          echo "No tags found between $latest_release and $new_release_tag"
+          exit 1
         fi
 
-        # Obtener cambios para cada tag
+        # Obtener cambios para cada tag en el rango
         changes=""
         prev_tag=$latest_release
         while IFS= read -r tag; do
@@ -54,12 +58,6 @@ jobs:
             prev_tag=$tag
           fi
         done <<< "$all_tags"
-
-        # Si no hay cambios, usar el último commit
-        if [ -z "$changes" ]; then
-          commit_msg=$(git log --pretty=format:"%s" -1 $new_release_tag -- my-project/resources || echo "")
-          changes="$new_release_tag"$'\n'"$commit_msg"$'\n\n'
-        fi
 
         # Codificar para GITHUB_ENV
         encoded_changes=$(printf "%s" "$changes" | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' -e 's/\r/%0D/g')
@@ -77,7 +75,7 @@ jobs:
         changes="${changes//'%25'/'%'}"
 
         # Crear archivo de notas
-        echo "## Release Notes (${{ github.event.inputs.new_release_tag }})" > release_notes.txt
+        echo "## Changes between $LATEST_RELEASE and ${{ github.event.inputs.new_release_tag }}" > release_notes.txt
         echo "" >> release_notes.txt
         printf "%s" "$changes" >> release_notes.txt
 
