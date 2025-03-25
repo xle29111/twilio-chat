@@ -40,16 +40,17 @@ jobs:
         
         echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        # Genera los cambios con un formato más simple
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"- %s" -- my-project/resources)
-
+        # Obtiene los cambios con el formato: tag + mensaje del commit
+        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h%n%s" -- my-project/resources | while read hash; do read msg; echo "$hash"; echo "$msg"; echo ""; done)
+        
+        # Formatea los cambios con viñetas
+        formatted_changes=$(echo "$changes" | awk '{if(NR%3==1) print "•\t" $0; else if(NR%3==2) print "  " $0; else print ""}')
+        
         # Escapa los caracteres especiales
-        changes="${changes//'%'/'%25'}"
-        changes="${changes//$'\n'/'%0A'}"
-        changes="${changes//$'\r'/'%0D'}"
+        escaped_changes=$(echo "$formatted_changes" | sed 's/%/%25/g; s/\n/%0A/g; s/\r/%0D/g')
 
-        echo "CHANGES=${changes}" >> $GITHUB_ENV
-        echo "Detected changes: ${changes}"
+        echo "CHANGES=$escaped_changes" >> $GITHUB_ENV
+        echo "Detected changes: $escaped_changes"
 
     - name: Create release notes
       id: create_release_notes
@@ -57,7 +58,10 @@ jobs:
       run: |
         new_release_tag=${{ github.event.inputs.new_release_tag }}
         latest_release=$LATEST_RELEASE
-        changes="${CHANGES//'%0A'/$'\n'}"
+        changes=$CHANGES
+
+        # Decodifica los cambios
+        changes="${changes//'%0A'/$'\n'}"
         changes="${changes//'%0D'/$'\r'}"
         changes="${changes//'%25'/'%'}"
 
