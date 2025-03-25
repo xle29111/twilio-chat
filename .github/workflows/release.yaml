@@ -40,8 +40,16 @@ jobs:
         
         echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        # Genera los cambios con los encabezados de los tags
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h (%d) %s" -- my-project/resources)
+        # Obtener la lista de commits entre los dos tags
+        commits=$(git log --pretty=format:"%h %s" $latest_release..$new_release_tag -- my-project/resources)
+
+        changes=""
+        while IFS= read -r line; do
+          commit_hash=$(echo "$line" | awk '{print $1}')
+          message=$(echo "$line" | cut -d' ' -f2-)
+          tag=$(git describe --tags --exact-match $commit_hash 2>/dev/null || git describe --tags --always $commit_hash)
+          changes+="$tag: $message\n"
+        done <<< "$commits"
 
         # Escapa los caracteres especiales
         changes="${changes//'%'/'%25'}"
