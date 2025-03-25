@@ -1,75 +1,41 @@
-name: Detect Changes Between Tags
+- name: Detect changes between tags
+  shell: bash
+  run: |
+    new_release_tag=${{ github.event.inputs.new_release_tag }}
+    latest_release=$LATEST_RELEASE
 
-on:
-  workflow_dispatch:
-    inputs:
-      new_release_tag:
-        description: 'Enter the new release tag version'
-        required: true
+    echo "Comparing changes between $latest_release and $new_release_tag..."
 
-jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
+    # Método alternativo para obtener cambios con tags
+    changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %d %s" -- my-project/resources | grep -v "tag: $latest_release")
+    
+    # Si no hay cambios, usar el último commit como referencia
+    if [ -z "$changes" ]; then
+      changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %d %s" -n 1 -- my-project/resources)
+    fi
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 
+    # Formatear la salida
+    formatted_changes=$(echo "$changes" | awk '{
+      gsub(/[()]/, "", $2);  # Remover paréntesis de las referencias
+      if ($2 ~ /tag:/) {
+        split($2, tags, ",");
+        for (i in tags) {
+          if (tags[i] ~ /tag:/) {
+            gsub(/tag: /, "", tags[i]);
+            print tags[i];
+            for (j=3; j<=NF; j++) print $j;
+            print "";
+          }
+        }
+      } else {
+        print $1;
+        for (j=3; j<=NF; j++) print $j;
+        print "";
+      }
+    }')
 
-    - name: Get latest release
-      env:
-        GH_TOKEN: ${{ github.token }}  
-      run: |
-        latest_release=$(gh release view --json tagName -q '.tagName')
-        echo "Latest release: $latest_release"
-        echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV
-
-    - name: Detect changes between tags
-      shell: bash
-      run: |
-        new_release_tag=${{ github.event.inputs.new_release_tag }}
-        latest_release=$LATEST_RELEASE
-
-        echo "Comparing changes between $latest_release and $new_release_tag..."
-
-        # Obtener los tags asociados a cada commit
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%H" -- my-project/resources | while read commit_hash; do
-          tag=$(git describe --tags --exact-match $commit_hash 2>/dev/null || echo "")
-          if [ -n "$tag" ]; then
-            msg=$(git show -s --format=%s $commit_hash)
-            echo "$tag"
-            echo "$msg"
-            echo ""
-          fi
-        done)
-
-        # Codificar para GITHUB_ENV
-        encoded_changes=$(echo "$changes" | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' -e 's/\r/%0D/g')
-        echo "CHANGES=${encoded_changes}" >> $GITHUB_ENV
-        echo "Detected changes:"
-        echo "$changes"
-
-    - name: Create release notes
-      id: create_release_notes
-      shell: bash
-      run: |
-        # Decodificar cambios
-        changes="${CHANGES//'%0A'/$'\n'}"
-        changes="${changes//'%0D'/$'\r'}"
-        changes="${changes//'%25'/'%'}"
-
-        # Crear archivo de notas
-        echo "## Release Notes" > release_notes.txt
-        echo "" >> release_notes.txt
-        echo "$changes" >> release_notes.txt
-
-        cat release_notes.txt
-
-    - name: Create new release using GitHub CLI
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release create ${{ github.event.inputs.new_release_tag }} \
-          --title "${{ github.event.inputs.new_release_tag }}" \
-          --notes-file release_notes.txt
+    # Codificar para GITHUB_ENV
+    encoded_changes=$(echo "$formatted_changes" | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' -e 's/\r/%0D/g')
+    echo "CHANGES=${encoded_changes}" >> $GITHUB_ENV
+    echo "Detected changes:"
+    echo "$formatted_changes"
