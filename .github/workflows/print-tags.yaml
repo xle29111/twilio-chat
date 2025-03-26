@@ -30,8 +30,8 @@ jobs:
           # Get tags between TAG1 and TAG2 in descending order
           TAGS=$(git tag --sort=-creatordate | awk -v t1="$TAG1" -v t2="$TAG2" '$0<=t1 && $0>t2')
 
-          echo "Found tags:" > release_notes.txt
-          echo "$TAGS" >> release_notes.txt
+          #echo "Found tags:" > release_notes.txt
+          #echo "$TAGS" >> release_notes.txt
 
           # Iterate over tags and retrieve commit messages
           for TAG in $TAGS; do
