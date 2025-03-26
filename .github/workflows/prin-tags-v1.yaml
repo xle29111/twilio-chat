@@ -27,42 +27,34 @@ jobs:
           TAG1=${{ github.event.inputs.tag1 }}
           TAG2=${{ github.event.inputs.tag2 }}
 
-          # Get tags between TAG1 and TAG2 in descending order
+          # Obtener los tags entre TAG1 y TAG2 en orden descendente
           TAGS=$(git tag --sort=-creatordate | awk -v t1="$TAG1" -v t2="$TAG2" '$0<=t1 && $0>t2')
 
-          echo "Found tags:" > release_notes.txt
-          echo "$TAGS" >> release_notes.txt
+          #echo "Tags encontrados:"
+          #echo "$TAGS"
 
-          # Iterate over tags and retrieve commit messages
+          # Iterar sobre los tags y obtener mensajes de los commits reales
           for TAG in $TAGS; do
-            echo "Processing $TAG..."
+            #echo "Procesando $TAG..."
 
-            # Get the commit where the tag was created
+            # Obtener el commit en el que se creó el tag
             TAG_COMMIT=$(git rev-list -n 1 $TAG)
             
-            # Check if the commit is a merge (has more than one parent)
+            # Verificar si el commit es un merge (tiene más de un padre)
             PARENTS=$(git rev-list --parents -n 1 $TAG_COMMIT)
             PARENT_COUNT=$(echo "$PARENTS" | wc -w)
 
             if [ "$PARENT_COUNT" -gt 2 ]; then
-              # If it's a merge, get the commit from the feature branch
+              # Si es un merge, obtener el commit de la feature branch
               REAL_COMMIT=$(echo "$PARENTS" | awk '{print $3}')
             else
-              # If it's not a merge, use the tag commit directly
+              # Si no es un merge, usar directamente el commit del tag
               REAL_COMMIT=$TAG_COMMIT
             fi
 
-            # Get the correct commit message
+            # Obtener el mensaje del commit correcto
             MESSAGE=$(git log -1 --pretty=format:"%s" $REAL_COMMIT)
 
-            echo "$TAG" >> release_notes.txt
-            echo "$MESSAGE" >> release_notes.txt
+            echo "$TAG"
+            echo "$MESSAGE"
           done
-
-      - name: Create new release using GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create ${{ github.event.inputs.tag1 }} \
-            --title "${{ github.event.inputs.tag1 }}" \
-            --notes-file release_notes.txt
