@@ -1,0 +1,41 @@
+name: Compare Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag1:
+        description: 'Latest Tag'
+        required: true
+        type: string
+      tag2:
+        description: 'Older Tag'
+        required: true
+        type: string
+
+jobs:
+  compare-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get tags in range
+        id: get-tags
+        run: |
+          TAG1=${{ github.event.inputs.tag1 }}
+          TAG2=${{ github.event.inputs.tag2 }}
+          
+          # Obtener los tags entre TAG1 y TAG2 en orden descendente
+          TAGS=$(git tag --sort=-creatordate | awk -v t1="$TAG1" -v t2="$TAG2" '$0<=t1 && $0>t2')
+          
+          echo "Tags encontrados:"
+          echo "$TAGS"
+          
+          # Iterar sobre los tags y obtener mensajes de commits
+          for TAG in $TAGS; do
+            MESSAGE=$(git log -1 --pretty=format:"%s" $TAG)
+            echo "$TAG"
+            echo "$MESSAGE"
+          done
