@@ -35,7 +35,7 @@ jobs:
 
           # Iterar sobre los tags y obtener mensajes de los commits reales
           for TAG in $TAGS; do
-            echo "Procesando $TAG..."
+            #echo "Procesando $TAG..."
 
             # Obtener el commit en el que se creó el tag
             TAG_COMMIT=$(git rev-list -n 1 $TAG)
