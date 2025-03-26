@@ -35,13 +35,24 @@ jobs:
 
           # Iterar sobre los tags y obtener mensajes de los commits reales
           for TAG in $TAGS; do
+            echo "Procesando $TAG..."
+
             # Obtener el commit en el que se creó el tag
             TAG_COMMIT=$(git rev-list -n 1 $TAG)
             
-            # Buscar el primer commit antes del merge (que pertenece a la feature branch)
-            REAL_COMMIT=$(git log --pretty=%H --first-parent $TAG_COMMIT^ | tail -n 1)
+            # Verificar si el commit es un merge (tiene más de un padre)
+            PARENTS=$(git rev-list --parents -n 1 $TAG_COMMIT)
+            PARENT_COUNT=$(echo "$PARENTS" | wc -w)
 
-            # Obtener el mensaje del commit real
+            if [ "$PARENT_COUNT" -gt 2 ]; then
+              # Si es un merge, obtener el commit de la feature branch
+              REAL_COMMIT=$(echo "$PARENTS" | awk '{print $3}')
+            else
+              # Si no es un merge, usar directamente el commit del tag
+              REAL_COMMIT=$TAG_COMMIT
+            fi
+
+            # Obtener el mensaje del commit correcto
             MESSAGE=$(git log -1 --pretty=format:"%s" $REAL_COMMIT)
 
             echo "$TAG"
