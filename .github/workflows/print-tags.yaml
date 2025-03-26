@@ -26,16 +26,24 @@ jobs:
         run: |
           TAG1=${{ github.event.inputs.tag1 }}
           TAG2=${{ github.event.inputs.tag2 }}
-          
+
           # Obtener los tags entre TAG1 y TAG2 en orden descendente
           TAGS=$(git tag --sort=-creatordate | awk -v t1="$TAG1" -v t2="$TAG2" '$0<=t1 && $0>t2')
-          
+
           echo "Tags encontrados:"
           echo "$TAGS"
-          
-          # Iterar sobre los tags y obtener mensajes de commits
+
+          # Iterar sobre los tags y obtener mensajes de los commits reales
           for TAG in $TAGS; do
-            MESSAGE=$(git log -1 --pretty=format:"%s" $TAG)
+            # Obtener el commit en el que se creó el tag
+            TAG_COMMIT=$(git rev-list -n 1 $TAG)
+            
+            # Buscar el primer commit antes del merge (que pertenece a la feature branch)
+            REAL_COMMIT=$(git log --pretty=%H --first-parent $TAG_COMMIT^ | tail -n 1)
+
+            # Obtener el mensaje del commit real
+            MESSAGE=$(git log -1 --pretty=format:"%s" $REAL_COMMIT)
+
             echo "$TAG"
             echo "$MESSAGE"
           done
