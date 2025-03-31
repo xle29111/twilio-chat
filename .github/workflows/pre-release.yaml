@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - RT
+    # This assumes you're merging from main to RT
+    # You might want to add additional conditions if needed
 
 jobs:
   detect-changes:
@@ -15,34 +17,34 @@ jobs:
       with:
         fetch-depth: 0 
 
-    - name: Get latest release
+    - name: Get latest release from main
+      env:
+        GH_TOKEN: ${{ github.token }}  
+      run: |
+        # Get the latest tag from main branch
+        git fetch --tags
+        new_release_tag=$(git describe --tags --abbrev=0 main)
+        
+        echo "New release tag from main: $new_release_tag"
+        echo "NEW_RELEASE_TAG=$new_release_tag" >> $GITHUB_ENV
+
+    - name: Get previous production release
       env:
         GH_TOKEN: ${{ github.token }}  
       run: |
         # Obtiene el tag del último release
         latest_release=$(gh release view --json tagName -q '.tagName')
 
-        echo "Latest release: $latest_release"
+        echo "Latest production release: $latest_release"
         
         # Exporta latest_release como variable de ambiente
         echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV  
 
-    - name: Get latest tag from main branch
-      shell: bash
-      run: |
-        # Obtiene el último tag de la rama main
-        new_release_tag=$(git describe --tags $(git rev-list --tags --max-count=1) main)
-
-        echo "New release tag: $new_release_tag"
-        
-        # Exporta new_release_tag como variable de ambiente
-        echo "NEW_RELEASE_TAG=$new_release_tag" >> $GITHUB_ENV
-
     - name: Generate release tags list
       shell: bash
       run: |
-        latest_release=$LATEST_RELEASE
         new_release_tag=$NEW_RELEASE_TAG
+        latest_release=$LATEST_RELEASE
 
         # Obtiene los tags de los releases intermedios
         release_tags=$(git tag --sort=-v:refname | awk -v latest=$latest_release -v new=$new_release_tag '{
@@ -56,8 +58,8 @@ jobs:
       id: create_release_notes
       shell: bash
       run: |
-        latest_release=$LATEST_RELEASE
         new_release_tag=$NEW_RELEASE_TAG
+        latest_release=$LATEST_RELEASE
         release_tags=$RELEASE_TAGS
 
         # Obtiene las carpetas modificadas
