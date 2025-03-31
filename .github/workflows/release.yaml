@@ -1,5 +1,3 @@
-name: Detect Changes Between Tags
-
 on:
   workflow_dispatch:
     inputs:
@@ -40,8 +38,17 @@ jobs:
         
         echo "Comparing changes between $new_release_tag and $latest_release..."
 
-        # Genera los cambios con un formato más simple
-        changes=$(git log $latest_release..$new_release_tag --pretty=format:"- %s" -- my-project/resources)
+        # Genera los cambios con los encabezados de los tags a los cuales pertenecen los commits
+        changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %s" -- my-project/resources | awk '{
+          cmd = "git describe --tags --abbrev=0 " $1;
+          cmd | getline tag;
+          close(cmd);
+          if (tag != prev_tag) {
+            print tag;
+            prev_tag = tag;
+          }
+          print "• " $2;
+        }')
 
         # Escapa los caracteres especiales
         changes="${changes//'%'/'%25'}"
