@@ -1,11 +1,9 @@
 name: Generating Pre-release
 
 on:
-  workflow_dispatch:
-    inputs:
-      new_release_tag:
-        description: 'Enter the new release tag version'
-        required: true
+  push:
+    branches:
+      - RT
 
 jobs:
   detect-changes:
@@ -29,11 +27,22 @@ jobs:
         # Exporta latest_release como variable de ambiente
         echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV  
 
+    - name: Get latest tag from main branch
+      shell: bash
+      run: |
+        # Obtiene el último tag de la rama main
+        new_release_tag=$(git describe --tags $(git rev-list --tags --max-count=1) main)
+
+        echo "New release tag: $new_release_tag"
+        
+        # Exporta new_release_tag como variable de ambiente
+        echo "NEW_RELEASE_TAG=$new_release_tag" >> $GITHUB_ENV
+
     - name: Generate release tags list
       shell: bash
       run: |
-        new_release_tag=${{ github.event.inputs.new_release_tag }}
         latest_release=$LATEST_RELEASE
+        new_release_tag=$NEW_RELEASE_TAG
 
         # Obtiene los tags de los releases intermedios
         release_tags=$(git tag --sort=-v:refname | awk -v latest=$latest_release -v new=$new_release_tag '{
@@ -47,8 +56,8 @@ jobs:
       id: create_release_notes
       shell: bash
       run: |
-        new_release_tag=${{ github.event.inputs.new_release_tag }}
         latest_release=$LATEST_RELEASE
+        new_release_tag=$NEW_RELEASE_TAG
         release_tags=$RELEASE_TAGS
 
         # Obtiene las carpetas modificadas
@@ -68,7 +77,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh release create ${{ github.event.inputs.new_release_tag }} \
-          --title "${{ github.event.inputs.new_release_tag }}" \
+        gh release create $NEW_RELEASE_TAG \
+          --title "$NEW_RELEASE_TAG" \
           --notes-file release_notes.txt \
           --prerelease
