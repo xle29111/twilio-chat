@@ -40,7 +40,7 @@ jobs:
 
         # Genera los cambios con los encabezados de los tags a los cuales pertenecen los commits
         changes=$(git log $latest_release..$new_release_tag --pretty=format:"%h %s" -- my-project/resources | awk '{
-          cmd = "git describe --tags --abbrev=0 " $1;
+          cmd = "git tag --contains " $1 " --sort=-creatordate | head -n 1";
           cmd | getline tag;
           close(cmd);
           if (tag != prev_tag) {
