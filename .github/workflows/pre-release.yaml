@@ -1,4 +1,4 @@
-name: Detect Changes Between Tags
+name: Generating Prelease
 
 on:
   workflow_dispatch:
