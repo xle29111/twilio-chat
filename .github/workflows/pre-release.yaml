@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - RT
-    # This assumes you're merging from main to RT
-    # You might want to add additional conditions if needed
 
 jobs:
   detect-changes:
@@ -15,43 +13,47 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 
+        fetch-depth: 0
+        fetch-tags: true
+        ref: RT  # Asegurarnos de estar en la rama RT
 
-    - name: Get latest release from main
+    - name: Get latest tag from origin
       env:
-        GH_TOKEN: ${{ github.token }}  
+        GH_TOKEN: ${{ github.token }}
       run: |
-        # Get the latest tag from main branch
-        git fetch --tags
-        new_release_tag=$(git describe --tags --abbrev=0 main)
+        # Primero hacemos fetch de todas las ramas y tags
+        git fetch --all --tags
         
-        echo "New release tag from main: $new_release_tag"
+        # Obtenemos el tag más reciente de origin/main
+        new_release_tag=$(git describe --tags --abbrev=0 origin/main 2>/dev/null || git describe --tags --abbrev=0)
+        
+        if [ -z "$new_release_tag" ]; then
+          echo "No tags found in the repository"
+          exit 1
+        fi
+        
+        echo "New release tag: $new_release_tag"
         echo "NEW_RELEASE_TAG=$new_release_tag" >> $GITHUB_ENV
 
     - name: Get previous production release
       env:
-        GH_TOKEN: ${{ github.token }}  
+        GH_TOKEN: ${{ github.token }}
       run: |
-        # Obtiene el tag del último release
         latest_release=$(gh release view --json tagName -q '.tagName')
-
         echo "Latest production release: $latest_release"
-        
-        # Exporta latest_release como variable de ambiente
-        echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV  
+        echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV
 
+    # Resto del workflow permanece igual...
     - name: Generate release tags list
       shell: bash
       run: |
         new_release_tag=$NEW_RELEASE_TAG
         latest_release=$LATEST_RELEASE
 
-        # Obtiene los tags de los releases intermedios
         release_tags=$(git tag --sort=-v:refname | awk -v latest=$latest_release -v new=$new_release_tag '{
           if ($0 <= new && $0 > latest) print $0
         }' | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
 
-        # Exporta release_tags como variable de ambiente
         echo "RELEASE_TAGS=$release_tags" >> $GITHUB_ENV
 
     - name: Create release notes
@@ -62,17 +64,14 @@ jobs:
         latest_release=$LATEST_RELEASE
         release_tags=$RELEASE_TAGS
 
-        # Obtiene las carpetas modificadas
         MODIFIED_FOLDERS=$(git diff --name-only $latest_release $new_release_tag -- my-project/resources | awk -F/ '{print $3}' | sort -u | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
 
-        # Crea un archivo temporal para las notas del release
         echo "Changes detected in this release:" > release_notes.txt
         echo "" >> release_notes.txt
         echo "Modified folders: $MODIFIED_FOLDERS" >> release_notes.txt
         echo "" >> release_notes.txt
         echo "Changes in this release: $release_tags" >> release_notes.txt
 
-        # Muestra el contenido del archivo de notas del release
         cat release_notes.txt
 
     - name: Create new release using GitHub CLI
