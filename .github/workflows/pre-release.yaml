@@ -48,21 +48,22 @@ jobs:
         new_release_tag=$NEW_RELEASE_TAG
         latest_release=$LATEST_RELEASE
 
-        # Función para convertir versiones a formato comparable
-        version_to_comparable() {
+        # Función para normalizar versiones (semver)
+        normalize_version() {
           echo "$1" | sed 's/^v//i' | awk -F. '{
-            printf("%04d%04d%04d\n", $1,$2,$3);
+            printf("%d.%d.%d\n", $1,$2,$3);
           }'
         }
 
-        # Convertimos las versiones a formato comparable
-        latest_comp=$(version_to_comparable "$latest_release")
-        new_comp=$(version_to_comparable "$new_release_tag")
-
-        # Obtenemos los tags de los releases intermedios
+        # Obtenemos todos los tags y los filtramos
         release_tags=$(git tag --sort=-v:refname | while read tag; do
-          tag_comp=$(version_to_comparable "$tag")
-          if [[ "$tag_comp" -gt "$latest_comp" && "$tag_comp" -le "$new_comp" ]]; then
+          norm_tag=$(normalize_version "$tag")
+          norm_latest=$(normalize_version "$latest_release")
+          norm_new=$(normalize_version "$new_release_tag")
+          
+          # Comparación usando sort -V (version sorting)
+          if [[ $(echo -e "$norm_latest\n$norm_tag" | sort -V | head -1) != "$norm_tag" ]] && 
+             [[ $(echo -e "$norm_tag\n$norm_new" | sort -V | head -1) == "$norm_tag" || "$norm_tag" == "$norm_new" ]]; then
             echo "$tag"
           fi
         done | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
