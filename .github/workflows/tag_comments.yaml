@@ -29,6 +29,16 @@ jobs:
           echo "ORIGIN_BRANCH_NAME=$ORIGIN_BRANCH_NAME" >> $GITHUB_ENV
           echo "Origin branch: $ORIGIN_BRANCH_NAME"
 
+      - name: Check if should create tag
+        id: should_create_tag
+        run: |
+          if [[ "$GITHUB_REF_NAME" == "RT" && "$ORIGIN_BRANCH_NAME" == "main" ]]; then
+            echo "SKIP_TAG=true" >> $GITHUB_ENV
+            echo "::notice::Skipping tag creation for merge from main to RT"
+          else
+            echo "SKIP_TAG=false" >> $GITHUB_ENV
+          fi
+
       - name: Get latest commit message from merged branch
         id: commit_message
         if: github.ref_name == 'main'
@@ -60,6 +70,7 @@ jobs:
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
 
       - name: Get latest tag (branch-aware)
+        if: env.SKIP_TAG == 'false'
         id: latest_tag
         run: |
           if [[ "$GITHUB_REF_NAME" == "RT" ]]; then
@@ -73,6 +84,7 @@ jobs:
           echo "Selected tag: $LATEST_TAG (from $GITHUB_REF_NAME)"
 
       - name: Generate new tag
+        if: env.SKIP_TAG == 'false'
         id: new_tag
         run: |
           # Check if merging into RT from non-main branch
@@ -94,6 +106,7 @@ jobs:
           echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
 
       - name: Create and push new tag
+        if: env.SKIP_TAG == 'false'
         run: |
           echo "Current branch: $(git branch --show-current)"
           git config --global user.name "github-actions"
