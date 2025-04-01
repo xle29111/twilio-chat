@@ -16,6 +16,7 @@ jobs:
 
       - name: Get merged branch name and origin branch
         id: merged_branch
+        if: github.ref_name == 'main'
         run: |
           # Get the hash of the merged branch
           MERGED_BRANCH=$(git log --merges -n 1 --pretty=format:'%P' | awk '{print $2}')
@@ -30,16 +31,19 @@ jobs:
 
       - name: Get latest commit message from merged branch
         id: commit_message
+        if: github.ref_name == 'main'
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGED_BRANCH 2>/dev/null || echo "No commit message found")
           echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
 
       - name: Get PR author
+        if: github.ref_name == 'main'
         run: |
           PR_AUTHOR=$(git log -1 --pretty=format:'%an')
           echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
 
       - name: Get modified folders
+        if: github.ref_name == 'main'
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^my-project/resources/' || true)
           if [ -n "$CHANGED_FILES" ]; then
@@ -50,6 +54,7 @@ jobs:
           fi
 
       - name: Extract package version
+        if: github.ref_name == 'main'
         run: |
           PACKAGE_VERSION=$(jq -r .version package.json)
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
