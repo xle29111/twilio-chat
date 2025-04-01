@@ -15,13 +15,12 @@ jobs:
       with:
         fetch-depth: 0
         fetch-tags: true
-        ref: RT  # Asegurarnos de estar en la rama RT
+        ref: RT
 
     - name: Get latest tag from origin
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        # Primero hacemos fetch de todas las ramas y tags
         git fetch --all --tags
         
         # Obtenemos el tag más reciente de origin/main
@@ -43,16 +42,30 @@ jobs:
         echo "Latest production release: $latest_release"
         echo "LATEST_RELEASE=$latest_release" >> $GITHUB_ENV
 
-    # Resto del workflow permanece igual...
     - name: Generate release tags list
       shell: bash
       run: |
         new_release_tag=$NEW_RELEASE_TAG
         latest_release=$LATEST_RELEASE
 
-        release_tags=$(git tag --sort=-v:refname | awk -v latest=$latest_release -v new=$new_release_tag '{
-          if ($0 <= new && $0 > latest) print $0
-        }' | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
+        # Función para convertir versiones a formato comparable
+        version_to_comparable() {
+          echo "$1" | sed 's/^v//i' | awk -F. '{
+            printf("%04d%04d%04d\n", $1,$2,$3);
+          }'
+        }
+
+        # Convertimos las versiones a formato comparable
+        latest_comp=$(version_to_comparable "$latest_release")
+        new_comp=$(version_to_comparable "$new_release_tag")
+
+        # Obtenemos los tags de los releases intermedios
+        release_tags=$(git tag --sort=-v:refname | while read tag; do
+          tag_comp=$(version_to_comparable "$tag")
+          if [[ "$tag_comp" -gt "$latest_comp" && "$tag_comp" -le "$new_comp" ]]; then
+            echo "$tag"
+          fi
+        done | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
 
         echo "RELEASE_TAGS=$release_tags" >> $GITHUB_ENV
 
@@ -70,7 +83,7 @@ jobs:
         echo "" >> release_notes.txt
         echo "Modified folders: $MODIFIED_FOLDERS" >> release_notes.txt
         echo "" >> release_notes.txt
-        echo "Tags to deploy: $release_tags" >> release_notes.txt
+        echo "Changes in this release: $release_tags" >> release_notes.txt
 
         cat release_notes.txt
 
