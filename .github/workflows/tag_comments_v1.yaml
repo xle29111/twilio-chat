@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - RT
 
 jobs:
   tag_changes:
@@ -63,26 +62,10 @@ jobs:
       - name: Generate new tag
         id: new_tag
         run: |
-          # Check if the current branch is RT and origin is not main
-          if [[ "$GITHUB_REF_NAME" == "RT" && "$ORIGIN_BRANCH_NAME" != "main" ]]; then
-            # For merges to RT from any branch except main - increment patch version
-            latest_tag="${LATEST_TAG}"
-            IFS='.' read -r -a parts <<< "${latest_tag#v}"
-            new_tag="v${parts[0]}.${parts[1]}.$((parts[2] + 1))"
-            echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
-            # Switch to RT branch
-            git checkout RT
-          else
-            # For merges to main (or from main to RT) - keep original behavior
-            latest_tag="${LATEST_TAG}"
-            IFS='.' read -r -a parts <<< "${latest_tag#v}"
-            new_tag="v${parts[0]}.$((parts[1] + 1)).0"
-            echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
-            # Switch to main branch if this is a merge to main
-            if [[ "$GITHUB_REF_NAME" == "main" ]]; then
-              git checkout main
-            fi
-          fi
+          latest_tag="${LATEST_TAG}"
+          IFS='.' read -r -a parts <<< "${latest_tag#v}"
+          new_tag="v${parts[0]}.$((parts[1] + 1)).0"
+          echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
 
       - name: Create and push new tag
         run: |
