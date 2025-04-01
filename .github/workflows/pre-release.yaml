@@ -84,7 +84,7 @@ jobs:
         echo "" >> release_notes.txt
         echo "Modified folders: $MODIFIED_FOLDERS" >> release_notes.txt
         echo "" >> release_notes.txt
-        echo "Changes in this release: $release_tags" >> release_notes.txt
+        echo "Tags that are part of this release: $release_tags" >> release_notes.txt
 
         cat release_notes.txt
 
