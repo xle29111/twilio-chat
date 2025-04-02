@@ -1,12 +1,15 @@
-name: Check Tag Branch
+name: Find Tag Branch
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Tag a verificar (ej. v1.2.3)'
+        description: 'Tag a buscar (ej. v1.2.3)'
         required: true
         type: string
+
+permissions:
+  contents: read
 
 jobs:
   check_tag:
@@ -16,30 +19,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Necesario para obtener todos los tags
+          fetch-depth: 0  # Obtiene todos los tags y referencias
 
-      - name: Check Tag in Main
-        id: check_main
+      - name: Find Tag in Branches
         run: |
-          if git rev-parse ${{ github.event.inputs.version }} >/dev/null 2>&1; then
-            if git branch -r --contains ${{ github.event.inputs.version }} | grep "origin/main"; then
-              echo "FOUND_IN=main" >> $GITHUB_ENV
+          TAG="${{ github.event.inputs.version }}"
+          BRANCHES=("main" "develop" "RT")
+          FOUND_IN=""
+
+          for BRANCH in "${BRANCHES[@]}"; do
+            if git branch -r --contains "refs/tags/$TAG" | grep -q "origin/$BRANCH"; then
+              FOUND_IN+="$BRANCH "
             fi
-          fi
+          done
 
-      - name: Check Tag in Develop
-        id: check_develop
-        run: |
-          if git rev-parse ${{ github.event.inputs.version }} >/dev/null 2>&1; then
-            if git branch -r --contains ${{ github.event.inputs.version }} | grep "origin/develop"; then
-              echo "FOUND_IN=develop" >> $GITHUB_ENV
-            fi
-          fi
-
-      - name: Display Result
-        run: |
           if [[ -z "$FOUND_IN" ]]; then
-            echo "El tag ${{ github.event.inputs.version }} no existe en main ni en develop."
+            echo "El tag $TAG no se encuentra en ninguna de las ramas especificadas."
           else
-            echo "El tag ${{ github.event.inputs.version }} está en la rama: $FOUND_IN"
+            echo "El tag $TAG se encuentra en las siguientes ramas: $FOUND_IN"
           fi
