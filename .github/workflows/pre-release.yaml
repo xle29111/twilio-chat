@@ -1,10 +1,9 @@
 name: Generating Pre-release
 
 on:
-  workflow_run:
-    workflows: ["versioning to main and RT"]
-    types:
-      - completed
+  push:
+    branches:
+      - RT
 
 jobs:
   detect-changes:
