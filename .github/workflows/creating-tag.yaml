@@ -1,0 +1,31 @@
+name: Create Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión del tag (ej. 1.2.3)'
+        required: true
+        type: string
+      branch:
+        description: 'Branch donde se creará el tag'
+        required: true
+        type: choice
+        options:
+          - develop
+          - main
+
+jobs:
+  create_tag:
+    name: Create Tag in Specified Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Create and Push Tag
+        run: |
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
