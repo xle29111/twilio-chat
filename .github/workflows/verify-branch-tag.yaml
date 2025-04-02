@@ -1,0 +1,45 @@
+name: Check Tag Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Tag a verificar (ej. v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  check_tag:
+    name: Check Tag in Branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para obtener todos los tags
+
+      - name: Check Tag in Main
+        id: check_main
+        run: |
+          if git rev-parse ${{ github.event.inputs.version }} >/dev/null 2>&1; then
+            if git branch -r --contains ${{ github.event.inputs.version }} | grep "origin/main"; then
+              echo "FOUND_IN=main" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Check Tag in Develop
+        id: check_develop
+        run: |
+          if git rev-parse ${{ github.event.inputs.version }} >/dev/null 2>&1; then
+            if git branch -r --contains ${{ github.event.inputs.version }} | grep "origin/develop"; then
+              echo "FOUND_IN=develop" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Display Result
+        run: |
+          if [[ -z "$FOUND_IN" ]]; then
+            echo "El tag ${{ github.event.inputs.version }} no existe en main ni en develop."
+          else
+            echo "El tag ${{ github.event.inputs.version }} está en la rama: $FOUND_IN"
+          fi
