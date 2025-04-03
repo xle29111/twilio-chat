@@ -4,6 +4,8 @@ on:
     branches:
       - main
       - RT
+    # Evita ejecución duplicada en merges de PRs
+    if: "!contains(github.event.head_commit.message, 'Merge pull request')"
 
 jobs:
   versioning:
@@ -21,20 +23,36 @@ jobs:
 
       - name: Get merged branch info
         id: merged_branch
+        shell: bash
         run: |
-          MERGE_COMMIT=$(git log --merges -n 1 --pretty=format:'%H')
+          # Obtenemos el commit de merge de forma segura
+          MERGE_COMMIT=$(git log --merges -n 1 --pretty=format:'%H' || echo "")
+          
           if [ -z "$MERGE_COMMIT" ]; then
             echo "MERGED_BRANCH=" >> $GITHUB_ENV
             echo "ORIGIN_BRANCH_NAME=" >> $GITHUB_ENV
+            echo "COMMIT_MESSAGE=No merge commit found" >> $GITHUB_ENV
             exit 0
           fi
           
-          MERGED_BRANCH=$(git log --pretty=%P -n 1 $MERGE_COMMIT | awk '{print $2}')
+          # Obtenemos la rama mergeada (segundo padre)
+          MERGED_BRANCH=$(git log --pretty=%P -n 1 $MERGE_COMMIT | awk '{print $2}' || echo "")
           echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
           
-          MERGE_COMMIT_MESSAGE=$(git log -1 --pretty=%s $MERGE_COMMIT)
-          ORIGIN_BRANCH_NAME=$(echo "$MERGE_COMMIT_MESSAGE" | sed -n 's/.*from \([^ ]*\).*/\1/p')
+          # Obtenemos el mensaje del commit escapando caracteres especiales
+          MERGE_COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGE_COMMIT | tr -cd '\11\12\15\40-\176' | sed 's/"/\\"/g')
+          echo "COMMIT_MESSAGE=$MERGE_COMMIT_MESSAGE" >> $GITHUB_ENV
+          
+          # Extraemos el nombre de la rama de origen de forma robusta
+          ORIGIN_BRANCH_NAME=$(echo "$MERGE_COMMIT_MESSAGE" | grep -oE 'from\s+\S+' | awk '{print $2}' | head -1 || echo "")
           echo "ORIGIN_BRANCH_NAME=$ORIGIN_BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Debug merge info
+        run: |
+          echo "Merge Commit: $MERGE_COMMIT"
+          echo "Merged Branch: $MERGED_BRANCH"
+          echo "Origin Branch: $ORIGIN_BRANCH_NAME"
+          echo "Commit Message: $COMMIT_MESSAGE"
 
       - name: Set merge type flag
         id: set_merge_type
@@ -45,24 +63,15 @@ jobs:
             echo "is_main_to_rt=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Get commit message
-        run: |
-          if [ -z "$MERGED_BRANCH" ]; then
-            echo "COMMIT_MESSAGE=No merge commit" >> $GITHUB_ENV
-          else
-            COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGED_BRANCH 2>/dev/null || echo "No commit message")
-            echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-          fi
-
       - name: Get PR author
         run: |
-          PR_AUTHOR=$(git log -1 --pretty=format:'%an')
+          PR_AUTHOR=$(git log -1 --pretty=format:'%an' || echo "Unknown")
           echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
 
       - name: Get modified folders
         id: get_folders
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^my-project/resources/' || true)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- my-project/resources || true)
           if [ -n "$CHANGED_FILES" ]; then
             MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | awk -F'/' '{print $3}' | sort -u | paste -sd ', ' -)
             echo "modified_folders=${MODIFIED_FOLDERS}" >> $GITHUB_OUTPUT
@@ -74,7 +83,7 @@ jobs:
 
       - name: Get package version
         run: |
-          PACKAGE_VERSION=$(jq -r .version package.json)
+          PACKAGE_VERSION=$(jq -r .version package.json || echo "0.0.0")
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
 
       - name: Get latest tag
