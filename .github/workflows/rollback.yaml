@@ -1,0 +1,116 @@
+name: Rollback Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Enter the version to rollback to'
+        required: true
+        type: string
+      flow:
+        description: 'Flow to rollback'
+        required: true
+        type: choice
+        options:
+          - chat
+          - CCO MS
+          - CCO PS
+          - all
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository and fetch all commit history
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Fetch all commit history
+
+      # Step 2: Verify the input version exists
+      - name: Verify input version
+        id: verify-version
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Error: Version '$VERSION' does not exist."
+            exit 1
+          fi
+          echo "Version '$VERSION' exists."
+
+      # Step 3: Get the previous commit before the specified version
+      - name: Get previous commit
+        id: get-previous-commit
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          PREVIOUS_COMMIT=$(git rev-list -n 1 "$VERSION^1")
+          echo "Previous commit: $PREVIOUS_COMMIT"
+          echo "::set-output name=previous_commit::$PREVIOUS_COMMIT"
+
+      # Step 4: Detect changes between the specified version and the previous commit (only for 'all' option)
+      - name: Detect changes
+        if: ${{ github.event.inputs.flow == 'all' }}
+        id: detect-changes
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          PREVIOUS_COMMIT=${{ steps.get-previous-commit.outputs.previous_commit }}
+          CHANGED_FILES=$(git diff --name-only "$PREVIOUS_COMMIT" "$VERSION")
+
+          # Create a file to save the affected folders
+          for FOLDER in my-project/resources/chat my-project/resources/CCO\ MS my-project/resources/CCO\ PS; do
+            if echo "$CHANGED_FILES" | grep -q "$FOLDER/"; then
+              echo "$FOLDER" >> changed_folders.txt
+            fi
+          done
+
+          # Display the content of the file (for debugging)
+          if [ -f changed_folders.txt ]; then
+            cat changed_folders.txt
+          else
+            echo "No changes detected in the specified folders."
+            exit 0
+          fi
+
+      # Step 5: Rollback based on the selected flow
+      - name: Rollback based on flow
+        run: |
+          FLOW=${{ github.event.inputs.flow }}
+
+          rollback_flow() {
+            case $1 in
+              "chat")
+                echo "Rolling back Chat..."
+                echo "chat v3.1.1" > my-project/resources/chat/chat.txt
+                ;;
+              "CCO MS")
+                echo "Rolling back CCO MS..."
+                echo "cco ms v1.1.1" > my-project/resources/CCO\ MS/cco\ ms.txt
+                ;;
+              "CCO PS")
+                echo "Rolling back CCO PS..."
+                echo "cco ps v2.1.2" > my-project/resources/CCO\ PS/cco\ ps.txt
+                ;;
+              *)
+                echo "Invalid flow selected."
+                exit 1
+                ;;
+            esac
+          }
+
+          if [ "$FLOW" == "all" ]; then
+            while IFS= read -r FOLDER; do
+              rollback_flow "${FOLDER##*/}"
+            done < changed_folders.txt
+          else
+            rollback_flow "$FLOW"
+          fi
+
+      # Step 6: Commit the changes
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add my-project/resources/*
+          git commit -m "Rollback to version ${{ github.event.inputs.version }} for ${{ github.event.inputs.flow }} flow"
+          git push origin HEAD:refs/heads/${{ github.ref_name }}

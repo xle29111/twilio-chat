@@ -1,0 +1,60 @@
+name: Compare Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag1:
+        description: 'Latest Tag'
+        required: true
+        type: string
+      tag2:
+        description: 'Older Tag'
+        required: true
+        type: string
+
+jobs:
+  compare-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get tags in range
+        id: get-tags
+        run: |
+          TAG1=${{ github.event.inputs.tag1 }}
+          TAG2=${{ github.event.inputs.tag2 }}
+
+          # Obtener los tags entre TAG1 y TAG2 en orden descendente
+          TAGS=$(git tag --sort=-creatordate | awk -v t1="$TAG1" -v t2="$TAG2" '$0<=t1 && $0>t2')
+
+          #echo "Tags encontrados:"
+          #echo "$TAGS"
+
+          # Iterar sobre los tags y obtener mensajes de los commits reales
+          for TAG in $TAGS; do
+            #echo "Procesando $TAG..."
+
+            # Obtener el commit en el que se creó el tag
+            TAG_COMMIT=$(git rev-list -n 1 $TAG)
+            
+            # Verificar si el commit es un merge (tiene más de un padre)
+            PARENTS=$(git rev-list --parents -n 1 $TAG_COMMIT)
+            PARENT_COUNT=$(echo "$PARENTS" | wc -w)
+
+            if [ "$PARENT_COUNT" -gt 2 ]; then
+              # Si es un merge, obtener el commit de la feature branch
+              REAL_COMMIT=$(echo "$PARENTS" | awk '{print $3}')
+            else
+              # Si no es un merge, usar directamente el commit del tag
+              REAL_COMMIT=$TAG_COMMIT
+            fi
+
+            # Obtener el mensaje del commit correcto
+            MESSAGE=$(git log -1 --pretty=format:"%s" $REAL_COMMIT)
+
+            echo "$TAG"
+            echo "$MESSAGE"
+          done

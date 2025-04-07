@@ -1,0 +1,68 @@
+name: Compare Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag1:
+        description: 'Latest Tag'
+        required: true
+        type: string
+      tag2:
+        description: 'Older Tag'
+        required: true
+        type: string
+
+jobs:
+  compare-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get tags in range
+        id: get-tags
+        run: |
+          TAG1=${{ github.event.inputs.tag1 }}
+          TAG2=${{ github.event.inputs.tag2 }}
+
+          # Get tags between TAG1 and TAG2 in descending order
+          TAGS=$(git tag --sort=-creatordate | awk -v t1="$TAG1" -v t2="$TAG2" '$0<=t1 && $0>t2')
+
+          #echo "Found tags:" > release_notes.txt
+          #echo "$TAGS" >> release_notes.txt
+
+          # Iterate over tags and retrieve commit messages
+          for TAG in $TAGS; do
+            echo "Processing $TAG..."
+
+            # Get the commit where the tag was created
+            TAG_COMMIT=$(git rev-list -n 1 $TAG)
+            
+            # Check if the commit is a merge (has more than one parent)
+            PARENTS=$(git rev-list --parents -n 1 $TAG_COMMIT)
+            PARENT_COUNT=$(echo "$PARENTS" | wc -w)
+
+            if [ "$PARENT_COUNT" -gt 2 ]; then
+              # If it's a merge, get the commit from the feature branch
+              REAL_COMMIT=$(echo "$PARENTS" | awk '{print $3}')
+            else
+              # If it's not a merge, use the tag commit directly
+              REAL_COMMIT=$TAG_COMMIT
+            fi
+
+            # Get the correct commit message
+            MESSAGE=$(git log -1 --pretty=format:"%s" $REAL_COMMIT)
+
+            echo "$TAG" >> release_notes.txt
+            echo "$MESSAGE" >> release_notes.txt
+          done
+
+      - name: Create new release using GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.event.inputs.tag1 }} \
+            --title "${{ github.event.inputs.tag1 }}" \
+            --notes-file release_notes.txt

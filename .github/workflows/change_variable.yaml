@@ -1,0 +1,32 @@
+name: Update Latest Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_version:
+        description: 'Enter the new release version'
+        required: true
+
+jobs:
+  print_and_update_latest_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Print current latest_release
+        run: |
+          echo "Current latest_release: ${{ vars.LATEST_RELEASE || 'Not set' }}"
+
+      - name: Update latest_release
+        env:
+          NEW_VERSION: ${{ github.event.inputs.new_version }}
+          PAT: ${{ secrets.PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "New release version: $NEW_VERSION"
+          curl -X PUT \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $PAT" \
+            https://api.github.com/repos/$REPO/actions/variables/LATEST_RELEASE \
+            -d '{"name":"LATEST_RELEASE","value":"'"$NEW_VERSION"'"}'

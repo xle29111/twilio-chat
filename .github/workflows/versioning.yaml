@@ -1,0 +1,117 @@
+name: versioning to main and RT
+on:
+  push:
+    branches:
+      - main
+      - RT
+
+jobs:
+  tag_changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get merged branch name and origin branch
+        id: merged_branch
+        run: |
+          # Obtener el commit de merge más reciente
+          MERGE_COMMIT=$(git log --merges -n 1 --pretty=format:'%H')
+          if [ -z "$MERGE_COMMIT" ]; then
+            echo "No merge commit found"
+            echo "MERGED_BRANCH=" >> $GITHUB_ENV
+            echo "ORIGIN_BRANCH_NAME=" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          # Obtener los padres del commit de merge
+          MERGED_BRANCH=$(git log --pretty=%P -n 1 $MERGE_COMMIT | awk '{print $2}')
+          echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
+          
+          # Obtener el nombre de la rama de origen
+          MERGE_COMMIT_MESSAGE=$(git log -1 --pretty=%s $MERGE_COMMIT)
+          ORIGIN_BRANCH_NAME=$(echo "$MERGE_COMMIT_MESSAGE" | sed -n 's/.*from \([^ ]*\).*/\1/p')
+          echo "ORIGIN_BRANCH_NAME=$ORIGIN_BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Get latest commit message from merged branch
+        id: commit_message
+        run: |
+          if [ -z "$MERGED_BRANCH" ]; then
+            echo "COMMIT_MESSAGE=No merge commit found" >> $GITHUB_ENV
+          else
+            COMMIT_MESSAGE=$(git log -1 --pretty=%B $MERGED_BRANCH 2>/dev/null || echo "No commit message found")
+            echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          fi
+
+      - name: Get PR author
+        run: |
+          PR_AUTHOR=$(git log -1 --pretty=format:'%an')
+          echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
+
+      - name: Get modified folders
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^my-project/resources/' || true)
+          if [ -n "$CHANGED_FILES" ]; then
+            MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | awk -F'/' '{print $3}' | sort -u | paste -sd ', ' - | sed 's/[[:space:]]*$//')
+            echo "MODIFIED_FOLDERS=${MODIFIED_FOLDERS//$'\n'/}" >> $GITHUB_ENV
+          else
+            echo "MODIFIED_FOLDERS=None" >> $GITHUB_ENV
+          fi
+
+      - name: Extract package version
+        run: |
+          PACKAGE_VERSION=$(jq -r .version package.json)
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_ENV
+
+      - name: Get latest tag (branch-aware)
+        id: latest_tag
+        run: |
+          if [[ "$GITHUB_REF_NAME" == "RT" ]]; then
+            LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --merged RT --sort=-v:refname | head -n 1 || echo 'v0.0.0')
+          else
+            LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --merged main --sort=-v:refname | head -n 1 || echo 'v0.0.0')
+          fi
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Generate new tag
+        id: new_tag
+        run: |
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No existing tag found, starting with v0.0.0"
+            LATEST_TAG="v0.0.0"
+          fi
+          
+          latest_tag="${LATEST_TAG}"
+          IFS='.' read -r -a parts <<< "${latest_tag#v}"
+          
+          if [[ "$GITHUB_REF_NAME" == "RT" ]]; then
+            if [[ "$ORIGIN_BRANCH_NAME" == "main" ]]; then
+              # Merge from main to RT: increment minor
+              new_tag="v${parts[0]}.$((parts[1] + 1)).0"
+              echo "Merge main→RT - incrementing minor version: $new_tag"
+            else
+              # Merge from other branch to RT: increment patch
+              new_tag="v${parts[0]}.${parts[1]}.$((parts[2] + 1))"
+              echo "Merge branch→RT - incrementing patch version: $new_tag"
+            fi
+            git checkout RT
+          else
+            # Merge to main: increment minor
+            new_tag="v${parts[0]}.$((parts[1] + 1)).0"
+            echo "Merge to main - incrementing minor version: $new_tag"
+            git checkout main
+          fi
+          echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
+
+      - name: Create and push new tag
+        if: env.NEW_TAG != ''
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          TAG_MESSAGE=$(printf "Modified folders: %s\nPackage version: %s\nPR Author: %s\nCommit message: %s\nMerged branch: %s\nOrigin branch: %s" \
+            "$MODIFIED_FOLDERS" "$PACKAGE_VERSION" "$PR_AUTHOR" "$COMMIT_MESSAGE" "$MERGED_BRANCH" "$ORIGIN_BRANCH_NAME")
+          git tag -a "$NEW_TAG" -m "$TAG_MESSAGE"
+          git push origin "$NEW_TAG"
+          echo "Successfully created and pushed tag: $NEW_TAG"

@@ -1,0 +1,33 @@
+name: Tag on Merge to Develop
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  create_tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Tag with Commit Message
+        run: |
+          # Get the last commit message
+          LAST_COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          # Filter out the merge commit message
+          if [[ "${LAST_COMMIT_MESSAGE}" == Merge* ]]; then
+            LAST_COMMIT_MESSAGE=$(git log -2 --pretty=%B | tail -1)
+          fi
+          # Create and push the tag
+          TAG_NAME="v$(date +'%Y%m%d%H%M%S')"
+          git tag -a "${TAG_NAME}" -m "${LAST_COMMIT_MESSAGE}"
+          git push origin "${TAG_NAME}"
+          echo "Created Tag ${TAG_NAME} with message: ${LAST_COMMIT_MESSAGE}"
