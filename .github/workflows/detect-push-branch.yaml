@@ -1,0 +1,25 @@
+name: Control Merge to main or rt
+
+on:
+  push:
+    branches:
+      - main
+      - rt
+
+jobs:
+  detect-merge:
+    runs-on: ubuntu-latest
+    steps:
+      # Extract the branch name into an environment variable
+      - name: Set branch name as environment variable
+        run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      # Checkout the corresponding branch using the env var
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+
+      # Print which branch received the merge
+      - name: Print merge branch
+        run: echo "The merge was done on $BRANCH_NAME"
