@@ -22,14 +22,9 @@ jobs:
           ref: ${{ env.BRANCH_NAME }}
 
       - name: Get origin branch of last merged PR
-        id: pr_info
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Fetching latest merged PR targeting $BRANCH_NAME..."
-          PR_DATA=$(gh pr list --state merged --base "$BRANCH_NAME" --json headRefName --limit 1)
-          ORIGIN_BRANCH_NAME=$(echo "$PR_DATA" | jq -r '.[0].headRefName')
-
+          MERGED_COMMIT_MESSAGE=$(git log --merges -n 1 --pretty=format:'%s')
+          ORIGIN_BRANCH_NAME=$(echo "$MERGED_COMMIT_MESSAGE" | sed -n 's/.*from \([^ ]*\).*/\1/p')
           echo "ORIGIN_BRANCH_NAME=$ORIGIN_BRANCH_NAME" >> $GITHUB_ENV
           echo "Origin branch: $ORIGIN_BRANCH_NAME"
 
