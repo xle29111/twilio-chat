@@ -16,15 +16,10 @@ jobs:
     name: Check Tag in Branches
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Obtiene todos los tags y referencias
-
       - name: Find Tag in Branches
         run: |
           TAG="${{ github.event.inputs.version }}"
-          BRANCHES=("main" "develop" "rt")
+          BRANCHES=("develop" "rt-test")
           FOUND_IN=""
 
           for BRANCH in "${BRANCHES[@]}"; do
@@ -38,3 +33,8 @@ jobs:
           else
             echo "El tag $TAG se encuentra en las siguientes ramas: $FOUND_IN"
           fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Obtiene todos los tags y referencias
