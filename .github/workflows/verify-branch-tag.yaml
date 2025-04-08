@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Find Tag in Branches
-        id: find_tag
         run: |
           TAG="${{ github.event.inputs.version }}"
           BRANCHES=("main" "rt")
@@ -26,27 +25,17 @@ jobs:
           for BRANCH in "${BRANCHES[@]}"; do
             if git branch -r --contains "refs/tags/$TAG" | grep -q "origin/$BRANCH"; then
               FOUND_IN+="$BRANCH "
-              echo "BRANCH=$BRANCH" >> $GITHUB_ENV
             fi
           done
 
           if [[ -z "$FOUND_IN" ]]; then
             echo "El tag $TAG no se encuentra en ninguna de las ramas especificadas."
-            exit 1
           else
             echo "El tag $TAG se encuentra en las siguientes ramas: $FOUND_IN"
-          fi
-
-      - name: Determine Checkout Branch
-        run: |
-          if [ "$BRANCH" = "rt-test" ]; then
-            echo "CHECKOUT_BRANCH=rt" >> $GITHUB_ENV
-          else
-            echo "CHECKOUT_BRANCH=$BRANCH" >> $GITHUB_ENV
           fi
 
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.CHECKOUT_BRANCH }}
-          fetch-depth: 0
+          fetch-depth: 0  # Obtiene todos los tags y referencias
+
