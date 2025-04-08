@@ -20,7 +20,7 @@ jobs:
         id: find_tag
         run: |
           TAG="${{ github.event.inputs.version }}"
-          BRANCHES=("develop" "rt")
+          BRANCHES=("main" "rt")
           FOUND_IN=""
 
           for BRANCH in "${BRANCHES[@]}"; do
