@@ -1,18 +1,25 @@
 name: versioning to main and RT
+
 on:
   push:
     branches:
       - main
-      - RT
+      - rt
 
 jobs:
   tag_changes:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Set branch name as environment variable
+        run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          show-progress: false
+          ref: ${{ env.BRANCH_NAME }}
 
       - name: Get merged branch name and origin branch
         id: merged_branch
@@ -71,24 +78,22 @@ jobs:
           LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || echo 'v0.0.0')
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
-
       - name: Generate new tag (branch-agnostic)
-  id: new_tag
-  run: |
-    if [ -z "$LATEST_TAG" ]; then
-      echo "No existing tag found, starting with v0.0.0"
-      LATEST_TAG="v0.0.0"
-    fi
+        id: new_tag
+        run: |
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No existing tag found, starting with v0.0.0"
+            LATEST_TAG="v0.0.0"
+          fi
 
-    latest_tag="${LATEST_TAG}"
-    IFS='.' read -r -a parts <<< "${latest_tag#v}"
+          latest_tag="${LATEST_TAG}"
+          IFS='.' read -r -a parts <<< "${latest_tag#v}"
 
-    # Always increment minor and reset patch
-    new_tag="v${parts[0]}.$((parts[1] + 1)).0"
-    echo "Incrementing minor version: $new_tag"
+          # Always increment minor and reset patch
+          new_tag="v${parts[0]}.$((parts[1] + 1)).0"
+          echo "Incrementing minor version: $new_tag"
 
-    echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
-
+          echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
 
       - name: Create and push new tag
         if: env.NEW_TAG != ''
