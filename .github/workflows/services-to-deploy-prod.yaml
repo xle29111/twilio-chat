@@ -47,3 +47,14 @@ jobs:
         run: |
           echo "Contenido de flows_to_deploy.txt:"
           cat flows_to_deploy.txt
+
+       - name: Configurar Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Hacer commit y push del archivo actualizado
+        run: |
+          git add flows_to_deploy.txt
+          git commit -m "Update flows_to_deploy.txt desde workflow manual"
+          git push origin HEAD
