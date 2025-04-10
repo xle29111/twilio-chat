@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       deploy_service_1:
-        description: 'Deploy Servicio 1'
+        description: 'Servicio 1'
         required: false
         type: boolean
       deploy_service_2:
-        description: 'Deploy Servicio 2'
+        description: 'Servicio 2'
         required: false
         type: boolean
       deploy_service_3:
-        description: 'Deploy Servicio 3'
+        description: 'Servicio 3'
         required: false
         type: boolean
 
