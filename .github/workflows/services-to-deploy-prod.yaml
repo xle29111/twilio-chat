@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
           show-progress: false
-		      ref: deploy-prod
+          ref: deploy-prod
 
       - name: Inicializar archivo de servicios
         run: echo -n "" > flows_to_deploy.txt
@@ -60,8 +60,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Hacer commit y push del archivo actualizado
+      - name: Hacer commit y push del archivo actualizado (si hubo cambios)
         run: |
           git add flows_to_deploy.txt
-          git commit -m "Update flows_to_deploy.txt desde workflow manual"
+          git diff --cached --quiet flows_to_deploy.txt || git commit -m "Update flows_to_deploy.txt desde workflow manual"
           git push origin HEAD
