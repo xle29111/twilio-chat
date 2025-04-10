@@ -71,4 +71,4 @@ jobs:
         gh release create ${{ github.event.inputs.new_release_tag }} \
           --title "${{ github.event.inputs.new_release_tag }}" \
           --notes-file release_notes.txt \
-          --prerelease
+          

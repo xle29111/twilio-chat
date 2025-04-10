@@ -23,8 +23,12 @@ jobs:
   write-and-show-services:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repositorio
+      - name: Checkout deploy-prod
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          show-progress: false
+		      ref: deploy-prod
 
       - name: Inicializar archivo de servicios
         run: echo -n "" > flows_to_deploy.txt
