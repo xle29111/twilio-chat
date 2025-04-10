@@ -17,18 +17,33 @@ on:
         type: boolean
 
 jobs:
-  show-selected-services:
+  write-and-show-services:
     runs-on: ubuntu-latest
     steps:
-      - name: Mostrar servicios seleccionados
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Inicializar archivo de servicios
+        run: echo -n "" > flows_to_deploy.txt
+
+      - name: Escribir servicios seleccionados
         run: |
           echo "Servicios seleccionados:"
+          
           if [ "${{ inputs.deploy_service_1 }}" == "true" ]; then
             echo "- Servicio 1"
+            echo "servicio-1" >> flows_to_deploy.txt
           fi
           if [ "${{ inputs.deploy_service_2 }}" == "true" ]; then
             echo "- Servicio 2"
+            echo "servicio-2" >> flows_to_deploy.txt
           fi
           if [ "${{ inputs.deploy_service_3 }}" == "true" ]; then
             echo "- Servicio 3"
+            echo "servicio-3" >> flows_to_deploy.txt
           fi
+
+      - name: Mostrar contenido final del archivo
+        run: |
+          echo "Contenido de flows_to_deploy.txt:"
+          cat flows_to_deploy.txt
