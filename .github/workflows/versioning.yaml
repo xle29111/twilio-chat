@@ -1,4 +1,5 @@
 name: versioning to main and RT
+
 on:
   push:
     branches:
@@ -8,6 +9,7 @@ on:
 jobs:
   tag_changes:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,11 +27,11 @@ jobs:
             echo "ORIGIN_BRANCH_NAME=" >> $GITHUB_ENV
             exit 0
           fi
-          
+
           # Obtener los padres del commit de merge
           MERGED_BRANCH=$(git log --pretty=%P -n 1 $MERGE_COMMIT | awk '{print $2}')
           echo "MERGED_BRANCH=$MERGED_BRANCH" >> $GITHUB_ENV
-          
+
           # Obtener el nombre de la rama de origen
           MERGE_COMMIT_MESSAGE=$(git log -1 --pretty=%s $MERGE_COMMIT)
           ORIGIN_BRANCH_NAME=$(echo "$MERGE_COMMIT_MESSAGE" | sed -n 's/.*from \([^ ]*\).*/\1/p')
@@ -68,8 +70,8 @@ jobs:
       - name: Get latest tag (branch-agnostic)
         id: latest_tag
         run: |
-        LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || echo 'v0.0.0')
-        echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+          LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || echo 'v0.0.0')
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
       - name: Generate new tag
         id: new_tag
@@ -78,10 +80,10 @@ jobs:
             echo "No existing tag found, starting with v0.0.0"
             LATEST_TAG="v0.0.0"
           fi
-          
+
           latest_tag="${LATEST_TAG}"
           IFS='.' read -r -a parts <<< "${latest_tag#v}"
-          
+
           if [[ "$GITHUB_REF_NAME" == "RT" ]]; then
             if [[ "$ORIGIN_BRANCH_NAME" == "main" ]]; then
               # Merge from main to RT: increment minor
@@ -99,6 +101,7 @@ jobs:
             echo "Merge to main - incrementing minor version: $new_tag"
             git checkout main
           fi
+
           echo "NEW_TAG=$new_tag" >> $GITHUB_ENV
 
       - name: Create and push new tag
