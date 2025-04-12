@@ -64,10 +64,16 @@ jobs:
         # Muestra el contenido del archivo de notas del release
         cat release_notes.txt
 
+    - name: Set merged variable
+        run: echo "MERGED=true" >> $GITHUB_ENV
+
     - name: Create new release using GitHub CLI
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        if [ "$MERGED" = "true" ]; then
+          echo -e "\n\nmerged=true" >> release_notes.txt
+        fi
         gh release create ${{ github.event.inputs.new_release_tag }} \
           --title "${{ github.event.inputs.new_release_tag }}" \
           --notes-file release_notes.txt \
