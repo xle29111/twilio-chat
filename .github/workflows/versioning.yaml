@@ -115,7 +115,7 @@ jobs:
          
           if [ "$MERGED" = "true" ]; then
             MERGED_VALUE="true"
-            TAG_MESSAGE=$(printf "Modified folders: %s\nPackage version: %s\nPR Author: %s\nCommit message: %s\nMerged branch: %s\nOrigin branch: %s\nMerged: %s" \
+            TAG_MESSAGE=$(printf "Modified folders: %s\nPackage version: %s\nPR Author: %s\nCommit message: %s\nMerged branch: %s\nOrigin branch: %s\n\n\nMerged: %s" \
               "$MODIFIED_FOLDERS" "$PACKAGE_VERSION" "$PR_AUTHOR" "$COMMIT_MESSAGE" "$MERGED_BRANCH" "$ORIGIN_BRANCH_NAME" "$MERGED_VALUE")
           else
             TAG_MESSAGE=$(printf "Modified folders: %s\nPackage version: %s\nPR Author: %s\nCommit message: %s\nMerged branch: %s\nOrigin branch: %s" \
