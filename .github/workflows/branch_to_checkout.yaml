@@ -1,27 +1,22 @@
-name: Manual Checkout Workflow
+name: Checkout Branch Manual  
 
-on:
-  workflow_dispatch:
-    inputs:
-      branch-name:
-        description: 'Nombre del branch a hacer checkout'
-        required: true
-        type: string
-        default: 'main'
+on:  
+  workflow_dispatch:  
+    # GitHub mostrará automáticamente un selector de branches  
 
-jobs:
-  checkout-code:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.branch-name }}
-          fetch-depth: 0
-          show-progress: false
-      
-      - name: Show Branch
-        run: |
-          echo "Branch seleccionado: ${{ github.event.inputs.branch-name }}"
-          git branch
-          git log -1
+jobs:  
+  checkout-branch:  
+    runs-on: ubuntu-latest  
+    steps:  
+      - name: Checkout selected branch  
+        uses: actions/checkout@v4  
+        with:  
+          ref: ${{ github.ref }}  # Usa la referencia del branch seleccionado  
+          fetch-depth: 0  
+          show-progress: false  
+
+      - name: Show branch info  
+        run: |  
+          echo "Branch seleccionado: ${{ github.ref_name }}"  
+          git branch  
+          git log -1 --oneline  
