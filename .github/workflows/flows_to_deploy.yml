@@ -1,0 +1,16 @@
+name: Print Deployable Applications
+
+on:
+  workflow_dispatch:
+
+jobs:
+  print-applications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Read and print applications with deploy = true
+        run: |
+          echo "Applications to deploy:"
+          jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json

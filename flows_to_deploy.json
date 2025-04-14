@@ -1,0 +1,15 @@
+[
+    {
+      "application": "AG",
+      "deploy": true
+    },
+    {
+      "application": "BH-PCP",
+      "deploy": true
+    },
+    {
+      "application": "CCO-MS",
+      "deploy": false
+    }
+  ]
+  
