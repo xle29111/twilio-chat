@@ -1,24 +1,27 @@
-name: Manual Branch Checkout
+name: Manual Checkout Workflow
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to checkout'
+      branch-name:
+        description: 'Nombre del branch a hacer checkout'
         required: true
         type: string
+        default: 'main'
 
 jobs:
-  checkout:
-    runs-on: ubuntu-latest    # <- ¡Indentado bajo "checkout"!
-
+  checkout-code:
+    runs-on: ubuntu-latest
     steps:
-      - name: Print selected branch
-        run: echo "Branch to checkout: ${{ github.event.inputs.branch }}"
-
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ github.event.inputs.branch-name }}
           fetch-depth: 0
           show-progress: false
+      
+      - name: Show Branch
+        run: |
+          echo "Branch seleccionado: ${{ github.event.inputs.branch-name }}"
+          git branch
+          git log -1
