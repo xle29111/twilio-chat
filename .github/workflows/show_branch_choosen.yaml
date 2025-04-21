@@ -1,0 +1,19 @@
+name: Imprimir nombre de branch (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  imprimir-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar y mostrar nombre del branch
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+
+          if [[ "$BRANCH_NAME" == "rt" || "$BRANCH_NAME" == "main" ]]; then
+            echo "Este workflow no se ejecuta en las ramas 'rt' ni 'main'."
+            exit 1
+          else
+            echo "Branch seleccionado: $BRANCH_NAME"
+          fi
