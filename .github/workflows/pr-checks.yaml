@@ -6,7 +6,7 @@ on:
       - main 
 
 jobs:
-  # First Status Check: Validate flows_to_deploy.json
+  
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout code from PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}  # Checkout the source branch of the PR
+          ref: ${{ github.head_ref }}  
           fetch-depth: 0
 
       - name: Get modified folders from the last commit in PR branch
@@ -60,11 +60,11 @@ jobs:
             fi
           done
 
-  # Second Status Check: (Leave empty for now)
+  
   up_to_date:
     name: Check if Feature Branch is Up-to-Date with Main
     runs-on: ubuntu-latest
-    needs: validate_flows  # This will ensure that validate_flows runs first
+    needs: validate_flows  
 
     steps:
       - name: Placeholder for checking if the feature branch is up-to-date with the main branch
@@ -72,11 +72,11 @@ jobs:
           echo "This is a placeholder for checking if the feature branch is up-to-date with main."
           echo "You need to implement the script that checks if the feature branch is up-to-date."
 
-  # Third Status Check: (Leave empty for now)
+  
   json_lint:
     name: Lint JSON File
     runs-on: ubuntu-latest
-    needs: validate_flows  # This will ensure that validate_flows runs first
+    needs: validate_flows  
 
     steps:
       - name: Placeholder for JSON linting
