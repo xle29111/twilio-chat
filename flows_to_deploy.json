@@ -1,11 +1,11 @@
 [
     {
-      "application": "AG",
+      "application": "chat",
       "deploy": true
     },
     {
-      "application": "BH-PCP",
-      "deploy": true
+      "application": "CCO PS",
+      "deploy": false
     },
     {
       "application": "CCO-MS",
