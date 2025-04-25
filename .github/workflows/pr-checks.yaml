@@ -3,9 +3,10 @@ name: PR checks
 on:
   pull_request:
     branches:
-      - main 
+      - main
 
 jobs:
+  # First Status Check: Validate flows_to_deploy.json
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
@@ -14,7 +15,7 @@ jobs:
       - name: Checkout code from PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}  
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Get modified folders from the last commit in PR branch
@@ -33,14 +34,13 @@ jobs:
             exit 0
           fi
 
-          # Extract modified folder names, sort, and format them
+          # Extract modified folder names and output them as separate lines
           MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
           echo "Modified folders:"
           echo "$MODIFIED_FOLDERS"
-          
-          # Store with proper newline handling
-          DELIM=$'\x1F'  # Using unit separator as delimiter
-          echo "MODIFIED_FOLDERS=${MODIFIED_FOLDERS//$'\n'/$DELIM}" >> $GITHUB_ENV
+          echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
+          echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Validate flows_to_deploy.json
         run: |
@@ -50,25 +50,17 @@ jobs:
             exit 0
           fi
 
-          # Restore newlines from delimiter
-          DELIM=$'\x1F'
-          MODIFIED_FOLDERS=${MODIFIED_FOLDERS//$DELIM/$'\n'}
-          
-          # Set IFS to only newline to preserve spaces in folder names
-          IFS=$'\n'
-          for folder in $MODIFIED_FOLDERS; do
-            # Skip empty lines
-            [ -z "$folder" ] && continue
-            
-            echo "Checking folder: '$folder'"
-            
-            # Check if the folder is marked as deployable in flows_to_deploy.json
+          # Validate each modified folder against flows_to_deploy.json
+          echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
+            if [ -z "$folder" ]; then
+              continue
+            fi
+
+            echo "🔍 Checking folder: '$folder'"
             if ! jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null; then
-              # If not deployable, fail the check
               echo "❌ The folder '$folder' is not enabled for deploy in flows_to_deploy.json"
               exit 1
             else
-              # If deployable, pass the check
               echo "✅ The folder '$folder' is enabled for deploy."
             fi
           done
@@ -76,7 +68,7 @@ jobs:
   up_to_date:
     name: Check if Feature Branch is Up-to-Date with Main
     runs-on: ubuntu-latest
-    needs: validate_flows  
+    needs: validate_flows
 
     steps:
       - name: Placeholder for checking if the feature branch is up-to-date with the main branch
@@ -87,7 +79,7 @@ jobs:
   json_lint:
     name: Lint JSON File
     runs-on: ubuntu-latest
-    needs: validate_flows  
+    needs: validate_flows
 
     steps:
       - name: Placeholder for JSON linting
