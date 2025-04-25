@@ -1,0 +1,22 @@
+name: Print branch name
+
+on:
+  workflow_dispatch:
+    inputs:
+      Env:
+        description: 'Select the deployment environment'
+        required: true
+        type: environment
+
+jobs:
+  print-branch:
+    runs-on: ubuntu-latest
+    steps:
+      # This step will only run if:
+      # 1. The selected branch is NOT 'rt' AND NOT 'main'
+      # 2. The selected environment is 'DEV'
+      - name: Show branch name (only if not 'rt' or 'main' and Env is 'DEV')
+        if: ${{ github.ref_name != 'rt' && github.ref_name != 'main' && github.event.inputs.Env == 'DEV' }}
+        run: |
+          echo "Selected branch: ${{ github.ref_name }}"
+          echo "Selected environment: ${{ github.event.inputs.Env }}"

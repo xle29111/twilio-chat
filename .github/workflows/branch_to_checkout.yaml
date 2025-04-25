@@ -1,0 +1,22 @@
+name: Checkout Branch Manual  
+
+on:  
+  workflow_dispatch:  
+    # GitHub mostrará automáticamente un selector de branches  
+
+jobs:  
+  checkout-branch:  
+    runs-on: ubuntu-latest  
+    steps:  
+      - name: Checkout selected branch  
+        uses: actions/checkout@v4  
+        with:  
+          ref: ${{ github.ref }}  # Usa la referencia del branch seleccionado  
+          fetch-depth: 0  
+          show-progress: false  
+
+      - name: Show branch info  
+        run: |  
+          echo "Branch seleccionado: ${{ github.ref_name }}"  
+          git branch  
+          git log -1 --oneline  

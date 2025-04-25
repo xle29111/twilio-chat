@@ -1,0 +1,90 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # First Status Check: Validate flows_to_deploy.json
+  validate_flows:
+    name: config-file
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code from PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Get modified folders from the last commit in PR branch
+        id: modified
+        run: |
+          echo "Detecting modified folders in the last commit of the PR source branch..."
+          echo "The source branch (origin branch) of the pull request is: ${{ github.head_ref }}"
+
+          # Compare the last commit (HEAD) with the previous commit (HEAD~1)
+          #CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^my-project/resources/' || true)
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep '^my-project/resources/' || true)
+
+
+          # If no changes are detected in my-project/resources/, exit
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changes detected in my-project/resources/"
+            echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          # Extract modified folder names and output them as separate lines
+          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
+          echo "Modified folders:"
+          echo "$MODIFIED_FOLDERS"
+          echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
+          echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Validate flows_to_deploy.json
+        run: |
+          # If no modified folders are detected, skip the validation
+          if [ -z "$MODIFIED_FOLDERS" ]; then
+            echo "No folders to validate."
+            exit 0
+          fi
+
+          # Validate each modified folder against flows_to_deploy.json
+          echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
+            if [ -z "$folder" ]; then
+              continue
+            fi
+
+            echo "🔍 Checking folder: '$folder'"
+            if ! jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null; then
+              echo "❌ The folder '$folder' is not enabled for deploy in flows_to_deploy.json"
+              exit 1
+            else
+              echo "✅ The folder '$folder' is enabled for deploy."
+            fi
+          done
+
+  up_to_date:
+    name: Check if Feature Branch is Up-to-Date with Main
+    runs-on: ubuntu-latest
+    needs: validate_flows
+
+    steps:
+      - name: Placeholder for checking if the feature branch is up-to-date with the main branch
+        run: |
+          echo "This is a placeholder for checking if the feature branch is up-to-date with main."
+          echo "You need to implement the script that checks if the feature branch is up-to-date."
+
+  json_lint:
+    name: Lint JSON File
+    runs-on: ubuntu-latest
+    needs: validate_flows
+
+    steps:
+      - name: Placeholder for JSON linting
+        run: |
+          echo "This is a placeholder for the JSON linting check."
+          echo "You need to implement the script that lints the JSON files (e.g., flows_to_deploy.json)."
