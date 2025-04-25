@@ -11,4 +11,8 @@
     "application": "CCO MS",
     "deploy": true
   },
+  {
+    "application": "CCO MS",
+    "deploy": true
+  }
 ]
