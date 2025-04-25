@@ -5,7 +5,7 @@
   },
   {
     "application": "CCO PS",
-    "deploy": true
+    "deploy": false
   },
   {
     "application": "CCO MS",
