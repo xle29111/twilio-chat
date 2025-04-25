@@ -1,0 +1,75 @@
+name: JSON Syntax Validation
+
+on:
+  workflow_dispatch:  # Permite ejecución manual
+  pull_request:
+    paths:
+      - 'flows_to_deploy.json'
+
+jobs:
+  validate_json:
+    name: Validate JSON Syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Validate JSON syntax with detailed errors
+        id: validate
+        run: |
+          echo "Validating flows_to_deploy.json..."
+          echo "--------------------------------"
+
+          # 1. Verificar si el archivo existe
+          if [ ! -f "flows_to_deploy.json" ]; then
+            echo "::error::File flows_to_deploy.json not found"
+            exit 1
+          fi
+
+          # 2. Validar sintaxis básica con jq
+          if ! jq empty flows_to_deploy.json 2> error.log; then
+            echo "::error::Invalid JSON syntax in flows_to_deploy.json"
+            echo "Error details:"
+            cat error.log
+            echo "--------------------------------"
+            
+            # Mostrar línea problemática con contexto
+            LINE=$(grep -oP 'line \K\d+' error.log)
+            if [ -n "$LINE" ]; then
+              echo "Problematic line (approx) and context:"
+              awk -v line="$LINE" 'NR>=line-2 && NR<=line+2' flows_to_deploy.json
+            fi
+            
+            exit 1
+          fi
+
+          # 3. Validar esquema específico
+          echo "Checking JSON schema..."
+          if ! jq -e '
+            if type == "array" then
+              all(
+                .[] |
+                has("application") and
+                has("deploy") and
+                (.deploy | type == "boolean")
+              )
+            else
+              false
+            end
+          ' flows_to_deploy.json > /dev/null; then
+            echo "::error::Invalid schema in flows_to_deploy.json"
+            echo "Each item must have:"
+            echo "- 'application' (string)"
+            echo "- 'deploy' (boolean)"
+            echo "--------------------------------"
+            echo "Current structure:"
+            jq '.[0]' flows_to_deploy.json
+            exit 1
+          fi
+
+          echo "--------------------------------"
+          echo "✅ flows_to_deploy.json has valid syntax and structure"
