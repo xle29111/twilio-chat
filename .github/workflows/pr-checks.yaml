@@ -6,7 +6,7 @@ on:
       - main 
 
 jobs:
-  
+  # First Status Check: Validate flows_to_deploy.json
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
@@ -35,7 +35,8 @@ jobs:
           fi
 
           # Extract modified folder names, sort, and format them
-          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
+          #MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
+          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
           echo "Modified folders: $MODIFIED_FOLDERS"
           echo "MODIFIED_FOLDERS=$MODIFIED_FOLDERS" >> $GITHUB_ENV
 
