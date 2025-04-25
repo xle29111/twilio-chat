@@ -109,9 +109,9 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Validate JSON syntax
+      - name: Validate JSON syntax and duplicates
         run: |
-          echo "🔍 Validating flows_to_deploy.json syntax..."
+          echo "🔍 Validating flows_to_deploy.json..."
           echo "------------------------------------------------------"
 
           # 1. Verify file exists
@@ -120,13 +120,12 @@ jobs:
             exit 1
           fi
 
-          # 2. Validate basic JSON syntax only
+          # 2. Validate basic JSON syntax
           if ! jq empty flows_to_deploy.json 2> jq_error.log; then
             echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
             echo "❌ JSON Syntax Error Details:"
             cat jq_error.log
             
-            # Show context around error line
             ERROR_LINE=$(grep -oP 'line \K\d+' jq_error.log | head -1)
             if [ -n "$ERROR_LINE" ]; then
               echo "🛑 Problematic area (around line $ERROR_LINE):"
@@ -135,14 +134,20 @@ jobs:
             exit 1
           fi
 
-          # 3. Check for duplicate application names (kept as it's useful for debugging)
-          DUPLICATES=$(jq -r 'group_by(.application) | map(select(length > 1) | .[0].application) | join(", ")' flows_to_deploy.json)
+          # 3. Strict duplicate detection
+          DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
           if [ -n "$DUPLICATES" ]; then
-            echo "::warning file=flows_to_deploy.json::Duplicate application names found"
-            echo "⚠️ Duplicate Application Names: $DUPLICATES"
-            # Changed to warning since we removed schema validation
+            echo "::error file=flows_to_deploy.json::Duplicate application names found"
+            echo "❌ Duplicate Application Names:"
+            echo "$DUPLICATES"
+            echo "------------------------------------------------------"
+            echo "Duplicate entries:"
+            jq -r 'group_by(.application)[] | select(length > 1) | .[] | "\(.application): deploy=\(.deploy)"' flows_to_deploy.json
+            exit 1
           fi
 
           echo "------------------------------------------------------"
-          echo "✅ flows_to_deploy.json has valid JSON syntax"
+          echo "✅ flows_to_deploy.json validation passed:"
+          echo "- Valid JSON syntax"
+          echo "- No duplicate application names"
           echo "Total applications configured: $(jq 'length' flows_to_deploy.json)"
