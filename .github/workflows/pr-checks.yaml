@@ -67,19 +67,37 @@ jobs:
             echo "✅ All modified folders are enabled for deploy."
           fi
 
-  up_to_date:
-    name: Check if Feature Branch is Up-to-Date with Base
+  up-to-date:
+    name: up-to-date
     runs-on: ubuntu-latest
     needs: validate_flows
 
     steps:
-      - name: Placeholder for checking if the feature branch is up-to-date with the base branch
-        run: |
-          echo "This is a placeholder for checking if the feature branch is up-to-date."
-          echo "You need to implement the script that checks if the feature branch is up-to-date."
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
 
-  json_lint:
-    name: Lint JSON File
+      - name: Check if feature branch is up-to-date with base branch
+        run: |
+          BASE_BRANCH="origin/${{ github.base_ref }}"
+          FEATURE_BRANCH="origin/${{ github.head_ref }}"
+
+          echo "Base branch is: $BASE_BRANCH"
+          echo "Feature branch is: $FEATURE_BRANCH"
+
+          git fetch origin $BASE_BRANCH
+
+          # Check if the feature branch contains all the commits from the base branch (main or rt)
+          if git merge-base --is-ancestor $BASE_BRANCH $FEATURE_BRANCH; then
+            echo "✅ The feature branch is up-to-date with $BASE_BRANCH. Merge is allowed."
+          else
+            echo "❌ The feature branch is not up-to-date with $BASE_BRANCH. You need to rebase or merge first."
+            exit 1
+          fi
+
+  json-lint:
+    name: json-lint
     runs-on: ubuntu-latest
     needs: validate_flows
 
