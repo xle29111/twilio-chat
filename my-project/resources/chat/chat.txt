@@ -2,7 +2,7 @@
 chat v3.6.1
 
 changes from alm
-chat v3.6.9
+chat v3.6.1
 
 
 
