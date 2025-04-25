@@ -7,7 +7,6 @@ on:
       - rt
 
 jobs:
-  # First Status Check: Validate flows_to_deploy.json
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
@@ -47,26 +46,26 @@ jobs:
 
       - name: Validate flows_to_deploy.json
         run: |
-          # If no modified folders are detected, skip the validation
           if [ -z "$MODIFIED_FOLDERS" ]; then
             echo "No folders to validate."
             exit 0
           fi
 
-          # Validate each modified folder against flows_to_deploy.json
           echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
-            if [ -z "$folder" ]; then
-              continue
-            fi
-
+            if [ -z "$folder" ]; then continue; fi
             echo "🔍 Checking folder: '$folder'"
-            if ! jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null; then
-              echo "❌ The folder '$folder' is not enabled for deploy in flows_to_deploy.json"
-              exit 1
-            else
-              echo "✅ The folder '$folder' is enabled for deploy."
-            fi
+            jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
           done
+
+          if [ -f invalid_folders.txt ]; then
+            echo "❌ The following folders are not enabled for deploy:"
+            cat invalid_folders.txt | while read f; do
+              echo " - $f"
+            done
+            exit 1
+          else
+            echo "✅ All modified folders are enabled for deploy."
+          fi
 
   up_to_date:
     name: Check if Feature Branch is Up-to-Date with Base
