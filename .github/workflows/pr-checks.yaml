@@ -7,7 +7,6 @@ on:
       - rt
 
 jobs:
-  # First Status Check: Validate flows_to_deploy.json
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
@@ -24,12 +23,14 @@ jobs:
         run: |
           echo "Detecting modified folders by comparing with the base branch..."
           BASE_BRANCH=${{ github.base_ref }}
-          echo "Base branch is: $BASE_BRANCH"
-          echo "Source branch is: ${{ github.head_ref }}"
+          echo "Base branch is: origin/$BASE_BRANCH"
+          echo "Source branch is: origin/${{ github.head_ref }}"
 
+          # Primero hacer fetch de ambas ramas
           git fetch origin $BASE_BRANCH
+          git fetch origin ${{ github.head_ref }}
 
-          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...HEAD | grep '^my-project/resources/' || true)
+          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
@@ -47,40 +48,60 @@ jobs:
 
       - name: Validate flows_to_deploy.json
         run: |
-          # If no modified folders are detected, skip the validation
           if [ -z "$MODIFIED_FOLDERS" ]; then
             echo "No folders to validate."
             exit 0
           fi
 
-          # Validate each modified folder against flows_to_deploy.json
           echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
-            if [ -z "$folder" ]; then
-              continue
-            fi
-
+            if [ -z "$folder" ]; then continue; fi
             echo "🔍 Checking folder: '$folder'"
-            if ! jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null; then
-              echo "❌ The folder '$folder' is not enabled for deploy in flows_to_deploy.json"
-              exit 1
-            else
-              echo "✅ The folder '$folder' is enabled for deploy."
-            fi
+            jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
           done
 
-  up_to_date:
-    name: Check if Feature Branch is Up-to-Date with Base
+          if [ -f invalid_folders.txt ]; then
+            echo "❌ The following folders are not enabled for deploy:"
+            cat invalid_folders.txt | while read f; do
+              echo " - $f"
+            done
+            exit 1
+          else
+            echo "✅ All modified folders are enabled for deploy."
+          fi
+
+  up-to-date:
+    name: up-to-date
     runs-on: ubuntu-latest
     needs: validate_flows
 
     steps:
-      - name: Placeholder for checking if the feature branch is up-to-date with the base branch
-        run: |
-          echo "This is a placeholder for checking if the feature branch is up-to-date."
-          echo "You need to implement the script that checks if the feature branch is up-to-date."
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
 
-  json_lint:
-    name: Lint JSON File
+      - name: Check if feature branch is up-to-date with base branch
+        run: |
+          BASE_BRANCH=${{ github.base_ref }}
+          FEATURE_BRANCH=${{ github.head_ref }}
+
+          echo "Base branch is: origin/$BASE_BRANCH"
+          echo "Feature branch is: origin/$FEATURE_BRANCH"
+
+          # Fetch ambas ramas
+          git fetch origin $BASE_BRANCH
+          git fetch origin $FEATURE_BRANCH
+
+          # Verificar si la rama base es ancestro de la rama feature
+          if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
+            echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
+          else
+            echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
+            exit 1
+          fi
+
+  json-lint:
+    name: json-lint
     runs-on: ubuntu-latest
     needs: validate_flows
 
