@@ -26,7 +26,6 @@ jobs:
           echo "Base branch is: origin/$BASE_BRANCH"
           echo "Source branch is: origin/${{ github.head_ref }}"
 
-          # Primero hacer fetch de ambas ramas
           git fetch origin $BASE_BRANCH
           git fetch origin ${{ github.head_ref }}
 
@@ -88,11 +87,9 @@ jobs:
           echo "Base branch is: origin/$BASE_BRANCH"
           echo "Feature branch is: origin/$FEATURE_BRANCH"
 
-          # Fetch ambas ramas
           git fetch origin $BASE_BRANCH
           git fetch origin $FEATURE_BRANCH
 
-          # Verificar si la rama base es ancestro de la rama feature
           if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
             echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
           else
@@ -106,7 +103,51 @@ jobs:
     needs: validate_flows
 
     steps:
-      - name: Placeholder for JSON linting
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Validate JSON syntax and duplicates
         run: |
-          echo "This is a placeholder for the JSON linting check."
-          echo "You need to implement the script that lints the JSON files (e.g., flows_to_deploy.json)."
+          echo "🔍 Validating flows_to_deploy.json..."
+          echo "------------------------------------------------------"
+
+          # 1. Verify file exists
+          if [ ! -f "flows_to_deploy.json" ]; then
+            echo "::error file=flows_to_deploy.json::File flows_to_deploy.json not found"
+            exit 1
+          fi
+
+          # 2. Validate basic JSON syntax
+          if ! jq empty flows_to_deploy.json 2> jq_error.log; then
+            echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
+            echo "❌ JSON Syntax Error Details:"
+            cat jq_error.log
+            
+            ERROR_LINE=$(grep -oP 'line \K\d+' jq_error.log | head -1)
+            if [ -n "$ERROR_LINE" ]; then
+              echo "🛑 Problematic area (around line $ERROR_LINE):"
+              awk -v line="$ERROR_LINE" 'NR>=line-3 && NR<=line+3' flows_to_deploy.json
+            fi
+            exit 1
+          fi
+
+          # 3. Strict duplicate detection
+          DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
+          if [ -n "$DUPLICATES" ]; then
+            echo "::error file=flows_to_deploy.json::Duplicate application names found"
+            echo "❌ Duplicate Application Names:"
+            echo "$DUPLICATES"
+            echo "------------------------------------------------------"
+            echo "Duplicate entries:"
+            jq -r 'group_by(.application)[] | select(length > 1) | .[] | "\(.application): deploy=\(.deploy)"' flows_to_deploy.json
+            exit 1
+          fi
+
+          echo "------------------------------------------------------"
+          echo "✅ flows_to_deploy.json validation passed:"
+          echo "- Valid JSON syntax"
+          echo "- No duplicate application names"
+          echo "Total applications configured: $(jq 'length' flows_to_deploy.json)"

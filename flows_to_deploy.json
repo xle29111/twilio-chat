@@ -5,10 +5,10 @@
   },
   {
     "application": "CCO PS",
-    "deploy": false
+    "deploy": true
   },
   {
     "application": "CCO MS",
-    "deploy": false
+    "deploy": true
   }
 ]
