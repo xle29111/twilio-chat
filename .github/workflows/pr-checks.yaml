@@ -15,21 +15,23 @@ jobs:
       - name: Checkout code from PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
+          ref: ${{ github.head_ref }}  
+          fetch-depth: 0  
 
       - name: Get modified folders from PR compared to base branch
         id: modified
         run: |
+          # Compare changes between base branch and PR branch
           echo "Detecting modified folders by comparing with the base branch..."
           BASE_BRANCH=${{ github.base_ref }}
           echo "Base branch is: origin/$BASE_BRANCH"
           echo "Source branch is: origin/${{ github.head_ref }}"
 
-          # Primero hacer fetch de ambas ramas
+          # Fetch both branches for comparison
           git fetch origin $BASE_BRANCH
           git fetch origin ${{ github.head_ref }}
 
+          # Get changed files in resources directory
           CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -38,27 +40,33 @@ jobs:
             exit 0
           fi
 
+          # Extract unique folder names from paths
           MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
           echo "Modified folders:"
           echo "$MODIFIED_FOLDERS"
 
+          # Store results in environment variable with proper newline handling
           echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
           echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Validate flows_to_deploy.json
         run: |
+          # Skip validation if no folders were modified
           if [ -z "$MODIFIED_FOLDERS" ]; then
             echo "No folders to validate."
             exit 0
           fi
 
+          # Check each modified folder against the config file
           echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
             if [ -z "$folder" ]; then continue; fi
             echo "🔍 Checking folder: '$folder'"
+            # Verify folder exists in config with deploy=true
             jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
           done
 
+          # Fail if any folders aren't enabled for deploy
           if [ -f invalid_folders.txt ]; then
             echo "❌ The following folders are not enabled for deploy:"
             cat invalid_folders.txt | while read f; do
@@ -72,7 +80,7 @@ jobs:
   up-to-date:
     name: up-to-date
     runs-on: ubuntu-latest
-    needs: validate_flows
+    needs: validate_flows 
 
     steps:
       - name: Checkout repository
@@ -82,17 +90,18 @@ jobs:
 
       - name: Check if feature branch is up-to-date with base branch
         run: |
+          # Get branch names from GitHub context
           BASE_BRANCH=${{ github.base_ref }}
           FEATURE_BRANCH=${{ github.head_ref }}
 
           echo "Base branch is: origin/$BASE_BRANCH"
           echo "Feature branch is: origin/$FEATURE_BRANCH"
 
-          # Fetch ambas ramas
+          # Fetch both branches for comparison
           git fetch origin $BASE_BRANCH
           git fetch origin $FEATURE_BRANCH
 
-          # Verificar si la rama base es ancestro de la rama feature
+          # Check if feature branch contains all commits from base branch
           if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
             echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
           else
@@ -103,10 +112,82 @@ jobs:
   json-lint:
     name: json-lint
     runs-on: ubuntu-latest
-    needs: validate_flows
+    needs: validate_flows  
 
     steps:
-      - name: Placeholder for JSON linting
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}  
+          fetch-depth: 0
+
+      - name: Install jq (JSON processor)
+        run: sudo apt-get install -y jq
+
+      - name: Validate JSON syntax with detailed errors
         run: |
-          echo "This is a placeholder for the JSON linting check."
-          echo "You need to implement the script that lints the JSON files (e.g., flows_to_deploy.json)."
+          echo "🔍 Validating flows_to_deploy.json syntax and structure..."
+          echo "------------------------------------------------------"
+
+          # 1. Verify file exists
+          if [ ! -f "flows_to_deploy.json" ]; then
+            echo "::error file=flows_to_deploy.json::File flows_to_deploy.json not found"
+            exit 1
+          fi
+
+          # 2. Validate basic JSON syntax
+          if ! jq empty flows_to_deploy.json 2> jq_error.log; then
+            echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
+            echo "❌ JSON Syntax Error Details:"
+            cat jq_error.log
+            
+            # Show context around error line
+            ERROR_LINE=$(grep -oP 'line \K\d+' jq_error.log | head -1)
+            if [ -n "$ERROR_LINE" ]; then
+              echo "🛑 Problematic area (around line $ERROR_LINE):"
+              awk -v line="$ERROR_LINE" 'NR>=line-3 && NR<=line+3' flows_to_deploy.json
+            fi
+            exit 1
+          fi
+
+          # 3. Validate schema structure
+          echo "Checking JSON schema..."
+          if ! jq -e '
+            if type == "array" then
+              all(
+                .[] |
+                has("application") and
+                has("deploy") and
+                (.deploy | type == "boolean") and
+                (.application | type == "string")
+              )
+            else
+              false
+            end
+          ' flows_to_deploy.json > /dev/null; then
+            echo "::error file=flows_to_deploy.json::Invalid schema structure"
+            echo "❌ Schema Validation Failed:"
+            echo "Each item must have:"
+            echo "- 'application' (string)"
+            echo "- 'deploy' (boolean)"
+            echo ""
+            echo "First item example:"
+            jq '.[0]' flows_to_deploy.json
+            exit 1
+          fi
+
+          # 4. Check for duplicate application names
+          DUPLICATES=$(jq -r 'group_by(.application) | map(select(length > 1) | .[0].application) | join(", ")' flows_to_deploy.json)
+          if [ -n "$DUPLICATES" ]; then
+            echo "::error file=flows_to_deploy.json::Duplicate application names found"
+            echo "❌ Duplicate Application Names: $DUPLICATES"
+            exit 1
+          fi
+
+          # Success message with summary
+          echo "------------------------------------------------------"
+          echo "✅ flows_to_deploy.json validation passed:"
+          echo "- Valid JSON syntax"
+          echo "- Correct schema structure"
+          echo "- No duplicate application names"
+          echo "Total applications configured: $(jq 'length' flows_to_deploy.json)"
