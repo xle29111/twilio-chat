@@ -6,7 +6,6 @@ on:
       - main 
 
 jobs:
-  # First Status Check: Validate flows_to_deploy.json
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
@@ -35,14 +34,13 @@ jobs:
           fi
 
           # Extract modified folder names, sort, and format them
-          #MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
           MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
-          echo "Modified folders: $MODIFIED_FOLDERS"
-
-          echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
-          echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          #echo "MODIFIED_FOLDERS=$MODIFIED_FOLDERS" >> $GITHUB_ENV
+          echo "Modified folders:"
+          echo "$MODIFIED_FOLDERS"
+          
+          # Store with proper newline handling
+          DELIM=$'\x1F'  # Using unit separator as delimiter
+          echo "MODIFIED_FOLDERS=${MODIFIED_FOLDERS//$'\n'/$DELIM}" >> $GITHUB_ENV
 
       - name: Validate flows_to_deploy.json
         run: |
@@ -52,8 +50,18 @@ jobs:
             exit 0
           fi
 
-          # Validate each modified folder against flows_to_deploy.json
-          echo "$MODIFIED_FOLDERS" | tr ', ' '\n' | while read folder; do
+          # Restore newlines from delimiter
+          DELIM=$'\x1F'
+          MODIFIED_FOLDERS=${MODIFIED_FOLDERS//$DELIM/$'\n'}
+          
+          # Set IFS to only newline to preserve spaces in folder names
+          IFS=$'\n'
+          for folder in $MODIFIED_FOLDERS; do
+            # Skip empty lines
+            [ -z "$folder" ] && continue
+            
+            echo "Checking folder: '$folder'"
+            
             # Check if the folder is marked as deployable in flows_to_deploy.json
             if ! jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null; then
               # If not deployable, fail the check
@@ -65,7 +73,6 @@ jobs:
             fi
           done
 
-  
   up_to_date:
     name: Check if Feature Branch is Up-to-Date with Main
     runs-on: ubuntu-latest
@@ -77,7 +84,6 @@ jobs:
           echo "This is a placeholder for checking if the feature branch is up-to-date with main."
           echo "You need to implement the script that checks if the feature branch is up-to-date."
 
-  
   json_lint:
     name: Lint JSON File
     runs-on: ubuntu-latest
