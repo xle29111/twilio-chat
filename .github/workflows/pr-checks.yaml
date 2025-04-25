@@ -23,12 +23,14 @@ jobs:
         run: |
           echo "Detecting modified folders by comparing with the base branch..."
           BASE_BRANCH=${{ github.base_ref }}
-          echo "Base branch is: $BASE_BRANCH"
-          echo "Source branch is: ${{ github.head_ref }}"
+          echo "Base branch is: origin/$BASE_BRANCH"
+          echo "Source branch is: origin/${{ github.head_ref }}"
 
+          # Primero hacer fetch de ambas ramas
           git fetch origin $BASE_BRANCH
+          git fetch origin ${{ github.head_ref }}
 
-          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...HEAD | grep '^my-project/resources/' || true)
+          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
@@ -80,19 +82,21 @@ jobs:
 
       - name: Check if feature branch is up-to-date with base branch
         run: |
-          BASE_BRANCH="origin/${{ github.base_ref }}"
-          FEATURE_BRANCH="origin/${{ github.head_ref }}"
+          BASE_BRANCH=${{ github.base_ref }}
+          FEATURE_BRANCH=${{ github.head_ref }}
 
-          echo "Base branch is: $BASE_BRANCH"
-          echo "Feature branch is: $FEATURE_BRANCH"
+          echo "Base branch is: origin/$BASE_BRANCH"
+          echo "Feature branch is: origin/$FEATURE_BRANCH"
 
+          # Fetch ambas ramas
           git fetch origin $BASE_BRANCH
+          git fetch origin $FEATURE_BRANCH
 
-          # Check if the feature branch contains all the commits from the base branch (main or rt)
-          if git merge-base --is-ancestor $BASE_BRANCH $FEATURE_BRANCH; then
-            echo "✅ The feature branch is up-to-date with $BASE_BRANCH. Merge is allowed."
+          # Verificar si la rama base es ancestro de la rama feature
+          if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
+            echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
           else
-            echo "❌ The feature branch is not up-to-date with $BASE_BRANCH. You need to rebase or merge first."
+            echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
             exit 1
           fi
 
