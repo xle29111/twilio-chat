@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - rt
 
 jobs:
   # First Status Check: Validate flows_to_deploy.json
@@ -18,28 +19,28 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Get modified folders from the last commit in PR branch
+      - name: Get modified folders from PR compared to base branch
         id: modified
         run: |
-          echo "Detecting modified folders in the last commit of the PR source branch..."
-          echo "The source branch (origin branch) of the pull request is: ${{ github.head_ref }}"
+          echo "Detecting modified folders by comparing with the base branch..."
+          BASE_BRANCH=${{ github.base_ref }}
+          echo "Base branch is: $BASE_BRANCH"
+          echo "Source branch is: ${{ github.head_ref }}"
 
-          # Compare the last commit (HEAD) with the previous commit (HEAD~1)
-          #CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep '^my-project/resources/' || true)
-          CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep '^my-project/resources/' || true)
+          git fetch origin $BASE_BRANCH
 
+          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...HEAD | grep '^my-project/resources/' || true)
 
-          # If no changes are detected in my-project/resources/, exit
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
             echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
             exit 0
           fi
 
-          # Extract modified folder names and output them as separate lines
           MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
           echo "Modified folders:"
           echo "$MODIFIED_FOLDERS"
+
           echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
           echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -68,14 +69,14 @@ jobs:
           done
 
   up_to_date:
-    name: Check if Feature Branch is Up-to-Date with Main
+    name: Check if Feature Branch is Up-to-Date with Base
     runs-on: ubuntu-latest
     needs: validate_flows
 
     steps:
-      - name: Placeholder for checking if the feature branch is up-to-date with the main branch
+      - name: Placeholder for checking if the feature branch is up-to-date with the base branch
         run: |
-          echo "This is a placeholder for checking if the feature branch is up-to-date with main."
+          echo "This is a placeholder for checking if the feature branch is up-to-date."
           echo "You need to implement the script that checks if the feature branch is up-to-date."
 
   json_lint:
