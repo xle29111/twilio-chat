@@ -1,15 +1,14 @@
 [
-    {
-      "application": "chat",
-      "deploy": true
-    },
-    {
-      "application": "CCO PS",
-      "deploy": false
-    },
-    {
-      "application": "CCO-MS",
-      "deploy": false
-    }
-  ]
-  
+  {
+    "application": "chat",
+    "deploy": true
+  },
+  {
+    "application": "CCO PS",
+    "deploy": true
+  },
+  {
+    "application": "CCO MS",
+    "deploy": true
+  }
+]
