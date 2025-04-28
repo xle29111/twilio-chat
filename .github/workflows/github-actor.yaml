@@ -1,0 +1,11 @@
+name: Print Actor
+
+on:
+  workflow_dispatch: # Permite ejecutarlo manualmente
+
+jobs:
+  print-actor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print GitHub Actor
+        run: echo "The actor is ${{ github.actor }}"
