@@ -1,4 +1,4 @@
-name: Print Actor
+name: Print Actor If Match
 
 on:
   workflow_dispatch: # Permite ejecutarlo manualmente
@@ -7,5 +7,6 @@ jobs:
   print-actor:
     runs-on: ubuntu-latest
     steps:
-      - name: Print GitHub Actor
+      - name: Check Actor and Print
+        if: ${{ github.actor == 'xaencarnacion' }}
         run: echo "The actor is ${{ github.actor }}"
