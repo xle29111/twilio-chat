@@ -38,7 +38,7 @@ jobs:
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
-    needs: up-to-date  # Depends on up-to-date check
+    needs: up-to-date  
 
     steps:
       - name: Checkout code from PR branch
@@ -100,7 +100,7 @@ jobs:
   json-lint:
     name: json-lint
     runs-on: ubuntu-latest
-    needs: up-to-date  # Also depends on up-to-date check
+    needs: up-to-date  
 
     steps:
       - name: Checkout code
