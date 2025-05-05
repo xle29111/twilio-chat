@@ -1,10 +1,32 @@
 {
+  "name": "my-project-v5",
+  "version": "7.0.1",
+  "private": true,
   "scripts": {
-    "prepare": "husky install"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "twilio-run",
+    "deploy": "twilio-run deploy",
+    "prepare": "husky install",
+    "semantic-release": "semantic-release"
+  },
+  "dependencies": {
+    "@twilio/runtime-handler": "2.0.0",
+    "twilio": "5.0.3"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "twilio-run": "^4.0.3",
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-conventional": "^19.7.1",
-    "husky": "^8.0.0"
+    "semantic-release": "^21.1.2",
+    "@semantic-release/commit-analyzer": "^9.0.2",
+    "@semantic-release/release-notes-generator": "^10.0.3",
+    "@semantic-release/npm": "^10.0.1",
+    "@semantic-release/github": "^8.0.5",
+    "@semantic-release/changelog": "^6.0.1",
+    "@semantic-release/git": "^10.0.1"
+  },
+  "engines": {
+    "node": "18"
   }
 }
