@@ -7,9 +7,38 @@ on:
       - rt
 
 jobs:
+  up-to-date:
+    name: up-to-date
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
+
+      - name: Check if feature branch is up-to-date with base branch
+        run: |
+          BASE_BRANCH=${{ github.base_ref }}
+          FEATURE_BRANCH=${{ github.head_ref }}
+
+          echo "Base branch is: origin/$BASE_BRANCH"
+          echo "Feature branch is: origin/$FEATURE_BRANCH"
+
+          git fetch origin $BASE_BRANCH
+          git fetch origin $FEATURE_BRANCH
+
+          if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
+            echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
+          else
+            echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
+            exit 1
+          fi
+
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
+    needs: up-to-date  
 
     steps:
       - name: Checkout code from PR branch
@@ -68,39 +97,10 @@ jobs:
             echo "✅ All modified folders are enabled for deploy."
           fi
 
-  up-to-date:
-    name: up-to-date
-    runs-on: ubuntu-latest
-    needs: validate_flows
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  
-
-      - name: Check if feature branch is up-to-date with base branch
-        run: |
-          BASE_BRANCH=${{ github.base_ref }}
-          FEATURE_BRANCH=${{ github.head_ref }}
-
-          echo "Base branch is: origin/$BASE_BRANCH"
-          echo "Feature branch is: origin/$FEATURE_BRANCH"
-
-          git fetch origin $BASE_BRANCH
-          git fetch origin $FEATURE_BRANCH
-
-          if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
-            echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
-          else
-            echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
-            exit 1
-          fi
-
   json-lint:
     name: json-lint
     runs-on: ubuntu-latest
-    needs: validate_flows
+    needs: up-to-date  
 
     steps:
       - name: Checkout code
@@ -114,13 +114,11 @@ jobs:
           echo "🔍 Validating flows_to_deploy.json..."
           echo "------------------------------------------------------"
 
-          # 1. Verify file exists
           if [ ! -f "flows_to_deploy.json" ]; then
             echo "::error file=flows_to_deploy.json::File flows_to_deploy.json not found"
             exit 1
           fi
 
-          # 2. Validate basic JSON syntax
           if ! jq empty flows_to_deploy.json 2> jq_error.log; then
             echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
             echo "❌ JSON Syntax Error Details:"
@@ -134,7 +132,6 @@ jobs:
             exit 1
           fi
 
-          # 3. Strict duplicate detection
           DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
           if [ -n "$DUPLICATES" ]; then
             echo "::error file=flows_to_deploy.json::Duplicate application names found"
