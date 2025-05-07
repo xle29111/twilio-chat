@@ -33,13 +33,15 @@ jobs:
 
           if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
             echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
+            echo "UP_TO_DATE_RESULT=success" >> $GITHUB_ENV
           else
             echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
-            exit 1
+            echo "UP_TO_DATE_RESULT=failure" >> $GITHUB_ENV
           fi
 
       # Step 2: Validate version
       - name: Validate version
+        id: validate_version
         continue-on-error: true
         run: |
           BASE_BRANCH=${{ github.base_ref }}
@@ -57,6 +59,7 @@ jobs:
 
           if [ ${#NEW[@]} -ne 3 ]; then
             echo "::error::Version must be in format X.Y.Z (e.g., 1.2.3)"
+            echo "VALIDATE_VERSION_RESULT=failure" >> $GITHUB_ENV
             exit 1
           fi
 
@@ -76,13 +79,16 @@ jobs:
 
           if [ "$is_valid" = true ]; then
             echo "✅ Version $NEW_VERSION is valid (greater than $BASE_VERSION)"
+            echo "VALIDATE_VERSION_RESULT=success" >> $GITHUB_ENV
           else
             echo "::error::Version $NEW_VERSION must be greater than $BASE_VERSION"
+            echo "VALIDATE_VERSION_RESULT=failure" >> $GITHUB_ENV
             exit 1
           fi
 
       # Step 3: Validate flows_to_deploy.json
       - name: Validate flows_to_deploy.json
+        id: validate_flows
         continue-on-error: true
         run: |
           BASE_BRANCH=${{ github.base_ref }}
@@ -94,6 +100,7 @@ jobs:
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
+            echo "VALIDATE_FLOWS_RESULT=success" >> $GITHUB_ENV
             exit 0
           fi
 
@@ -110,29 +117,45 @@ jobs:
           if [ -f invalid_folders.txt ]; then
             echo "❌ The following folders are not enabled for deploy:"
             cat invalid_folders.txt
+            echo "VALIDATE_FLOWS_RESULT=failure" >> $GITHUB_ENV
             exit 1
           else
             echo "✅ All modified folders are enabled for deploy."
+            echo "VALIDATE_FLOWS_RESULT=success" >> $GITHUB_ENV
           fi
 
       # Step 4: Lint JSON
       - name: JSON Lint
+        id: json_lint
         continue-on-error: true
         run: |
           if [ ! -f "flows_to_deploy.json" ]; then
             echo "::error::File flows_to_deploy.json not found"
+            echo "JSON_LINT_RESULT=failure" >> $GITHUB_ENV
             exit 1
           fi
 
           if ! jq empty flows_to_deploy.json 2> jq_error.log; then
             echo "::error::Invalid JSON syntax"
+            echo "JSON_LINT_RESULT=failure" >> $GITHUB_ENV
             exit 1
           fi
 
           DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
           if [ -n "$DUPLICATES" ]; then
             echo "::error::Duplicate application names found"
+            echo "JSON_LINT_RESULT=failure" >> $GITHUB_ENV
             exit 1
           fi
 
           echo "✅ flows_to_deploy.json validation passed."
+          echo "JSON_LINT_RESULT=success" >> $GITHUB_ENV
+
+      # Final Step: Global Validation
+      - name: Final Validation
+        run: |
+          if [ "$UP_TO_DATE_RESULT" != "success" ] || [ "$VALIDATE_VERSION_RESULT" != "success" ] || [ "$VALIDATE_FLOWS_RESULT" != "success" ] || [ "$JSON_LINT_RESULT" != "success" ]; then
+            echo "❌ One or more checks failed."
+            exit 1
+          else
+            echo "✅ All checks passed successfully."
