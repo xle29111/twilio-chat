@@ -8,7 +8,7 @@
     "deploy": true
   },
   {
-    "application": "CCO MS",
+    "application": "CCO MS", 
     "deploy": false
   }
 ]
