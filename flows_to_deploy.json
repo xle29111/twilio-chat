@@ -9,6 +9,6 @@
   },
   {
     "application": "CCO MS",
-    "deploy": true
+    "deploy": false
   }
 ]
