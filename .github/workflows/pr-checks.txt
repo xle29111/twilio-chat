@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  
+          fetch-depth: 0
 
       - name: Check if feature branch is up-to-date with base branch
         run: |
@@ -35,10 +35,70 @@ jobs:
             exit 1
           fi
 
+  version-validation:
+    name: version-validation
+    runs-on: ubuntu-latest
+    needs: up-to-date
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Extract base version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "BASE_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Validate version
+        run: |
+          echo "Base version (main): $BASE_VERSION"
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New version (PR): $NEW_VERSION"
+
+          IFS='.' read -ra CURRENT <<< "$BASE_VERSION"
+          IFS='.' read -ra NEW <<< "$NEW_VERSION"
+
+          if [ ${#NEW[@]} -ne 3 ]; then
+            echo "::error::Version must be in format X.Y.Z (e.g., 1.2.3)"
+            exit 1
+          fi
+
+          is_valid=false
+
+          if [ ${NEW[0]} -gt ${CURRENT[0]} ]; then
+            is_valid=true
+          elif [ ${NEW[0]} -eq ${CURRENT[0]} ]; then
+            if [ ${NEW[1]} -gt ${CURRENT[1]} ]; then
+              is_valid=true
+            elif [ ${NEW[1]} -eq ${CURRENT[1]} ]; then
+              if [ ${NEW[2]} -gt ${CURRENT[2]} ]; then
+                is_valid=true
+              fi
+            fi
+          fi
+
+          if [ "$is_valid" = true ]; then
+            echo "✅ Version $NEW_VERSION is valid (greater than $BASE_VERSION)"
+          else
+            echo "::error::Version $NEW_VERSION must be greater than $BASE_VERSION"
+            echo "Valid examples:"
+            echo "Major bump: $((CURRENT[0]+1)).${CURRENT[1]}.${CURRENT[2]}"
+            echo "Minor bump: ${CURRENT[0]}.$((CURRENT[1]+1)).${CURRENT[2]}"
+            echo "Patch bump: ${CURRENT[0]}.${CURRENT[1]}.$((CURRENT[2]+1))"
+            exit 1
+          fi
+
   validate_flows:
     name: config-file
     runs-on: ubuntu-latest
-    needs: up-to-date  
+    needs: up-to-date
 
     steps:
       - name: Checkout code from PR branch
@@ -100,7 +160,7 @@ jobs:
   json-lint:
     name: json-lint
     runs-on: ubuntu-latest
-    needs: up-to-date  
+    needs: up-to-date
 
     steps:
       - name: Checkout code
@@ -123,7 +183,7 @@ jobs:
             echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
             echo "❌ JSON Syntax Error Details:"
             cat jq_error.log
-            
+
             ERROR_LINE=$(grep -oP 'line \K\d+' jq_error.log | head -1)
             if [ -n "$ERROR_LINE" ]; then
               echo "🛑 Problematic area (around line $ERROR_LINE):"

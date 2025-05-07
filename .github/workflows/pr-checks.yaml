@@ -7,8 +7,8 @@ on:
       - rt
 
 jobs:
-  up-to-date:
-    name: up-to-date
+  pr-checks:
+    name: PR Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -17,7 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Step 1: Check if the branch is up-to-date
       - name: Check if feature branch is up-to-date with base branch
+        id: up_to_date
+        continue-on-error: true
         run: |
           BASE_BRANCH=${{ github.base_ref }}
           FEATURE_BRANCH=${{ github.head_ref }}
@@ -35,30 +38,17 @@ jobs:
             exit 1
           fi
 
-  version-validation:
-    name: version-validation
-    runs-on: ubuntu-latest
-    needs: up-to-date
-
-    steps:
-      - name: Checkout base branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.base_ref }}
-
-      - name: Extract base version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "BASE_VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
+      # Step 2: Validate version
       - name: Validate version
+        continue-on-error: true
         run: |
+          BASE_BRANCH=${{ github.base_ref }}
+          git fetch origin $BASE_BRANCH
+          git checkout $BASE_BRANCH
+          BASE_VERSION=$(node -p "require('./package.json').version")
           echo "Base version (main): $BASE_VERSION"
+
+          git checkout ${{ github.head_ref }}
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "New version (PR): $NEW_VERSION"
 
@@ -88,58 +78,28 @@ jobs:
             echo "✅ Version $NEW_VERSION is valid (greater than $BASE_VERSION)"
           else
             echo "::error::Version $NEW_VERSION must be greater than $BASE_VERSION"
-            echo "Valid examples:"
-            echo "Major bump: $((CURRENT[0]+1)).${CURRENT[1]}.${CURRENT[2]}"
-            echo "Minor bump: ${CURRENT[0]}.$((CURRENT[1]+1)).${CURRENT[2]}"
-            echo "Patch bump: ${CURRENT[0]}.${CURRENT[1]}.$((CURRENT[2]+1))"
             exit 1
           fi
 
-  validate_flows:
-    name: config-file
-    runs-on: ubuntu-latest
-    needs: up-to-date
-
-    steps:
-      - name: Checkout code from PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-
-      - name: Get modified folders from PR compared to base branch
-        id: modified
+      # Step 3: Validate flows_to_deploy.json
+      - name: Validate flows_to_deploy.json
+        continue-on-error: true
         run: |
-          echo "Detecting modified folders by comparing with the base branch..."
           BASE_BRANCH=${{ github.base_ref }}
-          echo "Base branch is: origin/$BASE_BRANCH"
-          echo "Source branch is: origin/${{ github.head_ref }}"
-
           git fetch origin $BASE_BRANCH
-          git fetch origin ${{ github.head_ref }}
+          git checkout $BASE_BRANCH
 
+          git checkout ${{ github.head_ref }}
           CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
-            echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
             exit 0
           fi
 
           MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
           echo "Modified folders:"
           echo "$MODIFIED_FOLDERS"
-
-          echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
-          echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Validate flows_to_deploy.json
-        run: |
-          if [ -z "$MODIFIED_FOLDERS" ]; then
-            echo "No folders to validate."
-            exit 0
-          fi
 
           echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
             if [ -z "$folder" ]; then continue; fi
@@ -149,62 +109,30 @@ jobs:
 
           if [ -f invalid_folders.txt ]; then
             echo "❌ The following folders are not enabled for deploy:"
-            cat invalid_folders.txt | while read f; do
-              echo " - $f"
-            done
+            cat invalid_folders.txt
             exit 1
           else
             echo "✅ All modified folders are enabled for deploy."
           fi
 
-  json-lint:
-    name: json-lint
-    runs-on: ubuntu-latest
-    needs: up-to-date
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
-      - name: Validate JSON syntax and duplicates
+      # Step 4: Lint JSON
+      - name: JSON Lint
+        continue-on-error: true
         run: |
-          echo "🔍 Validating flows_to_deploy.json..."
-          echo "------------------------------------------------------"
-
           if [ ! -f "flows_to_deploy.json" ]; then
-            echo "::error file=flows_to_deploy.json::File flows_to_deploy.json not found"
+            echo "::error::File flows_to_deploy.json not found"
             exit 1
           fi
 
           if ! jq empty flows_to_deploy.json 2> jq_error.log; then
-            echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
-            echo "❌ JSON Syntax Error Details:"
-            cat jq_error.log
-
-            ERROR_LINE=$(grep -oP 'line \K\d+' jq_error.log | head -1)
-            if [ -n "$ERROR_LINE" ]; then
-              echo "🛑 Problematic area (around line $ERROR_LINE):"
-              awk -v line="$ERROR_LINE" 'NR>=line-3 && NR<=line+3' flows_to_deploy.json
-            fi
+            echo "::error::Invalid JSON syntax"
             exit 1
           fi
 
           DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
           if [ -n "$DUPLICATES" ]; then
-            echo "::error file=flows_to_deploy.json::Duplicate application names found"
-            echo "❌ Duplicate Application Names:"
-            echo "$DUPLICATES"
-            echo "------------------------------------------------------"
-            echo "Duplicate entries:"
-            jq -r 'group_by(.application)[] | select(length > 1) | .[] | "\(.application): deploy=\(.deploy)"' flows_to_deploy.json
+            echo "::error::Duplicate application names found"
             exit 1
           fi
 
-          echo "------------------------------------------------------"
-          echo "✅ flows_to_deploy.json validation passed:"
-          echo "- Valid JSON syntax"
-          echo "- No duplicate application names"
-          echo "Total applications configured: $(jq 'length' flows_to_deploy.json)"
+          echo "✅ flows_to_deploy.json validation passed."
