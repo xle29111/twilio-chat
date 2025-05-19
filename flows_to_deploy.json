@@ -1,11 +1,11 @@
 [
   {
     "application": "chat",
-    "deploy": true
+    "deploy": false
   },
   {
     "application": "CCO PS",
-    "deploy": true
+    "deploy": false
   },
   {
     "application": "CCO MS", 

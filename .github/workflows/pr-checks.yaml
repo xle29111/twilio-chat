@@ -7,8 +7,8 @@ on:
       - rt
 
 jobs:
-  pr-checks:
-    name: PR Checks
+  up-to-date:
+    name: up-to-date
     runs-on: ubuntu-latest
 
     steps:
@@ -17,15 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Initialize FAILED_STEPS variable
-      - name: Initialize variables
-        run: |
-          echo "FAILED_STEPS=" >> $GITHUB_ENV
-
-      # Step 1: Check if the branch is up-to-date
       - name: Check if feature branch is up-to-date with base branch
-        id: up_to_date
-        continue-on-error: true
         run: |
           BASE_BRANCH=${{ github.base_ref }}
           FEATURE_BRANCH=${{ github.head_ref }}
@@ -38,25 +30,35 @@ jobs:
 
           if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
             echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
-            echo "UP_TO_DATE_RESULT=success" >> $GITHUB_ENV
           else
             echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
-            echo "UP_TO_DATE_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS Check if feature branch is up-to-date with base branch," >> $GITHUB_ENV
+            exit 1
           fi
 
-      # Step 2: Validate version
-      - name: Validate version
-        id: validate_version
-        continue-on-error: true
-        run: |
-          BASE_BRANCH=${{ github.base_ref }}
-          git fetch origin $BASE_BRANCH
-          git checkout $BASE_BRANCH
-          BASE_VERSION=$(node -p "require('./package.json').version")
-          echo "Base version (main): $BASE_VERSION"
+  version-validation:
+    name: version-validation
+    runs-on: ubuntu-latest
+    needs: up-to-date
 
-          git checkout ${{ github.head_ref }}
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Extract base version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "BASE_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Validate version
+        run: |
+          echo "Base version (main): $BASE_VERSION"
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "New version (PR): $NEW_VERSION"
 
@@ -65,8 +67,6 @@ jobs:
 
           if [ ${#NEW[@]} -ne 3 ]; then
             echo "::error::Version must be in format X.Y.Z (e.g., 1.2.3)"
-            echo "VALIDATE_VERSION_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS Validate version," >> $GITHUB_ENV
             exit 1
           fi
 
@@ -86,38 +86,55 @@ jobs:
 
           if [ "$is_valid" = true ]; then
             echo "✅ Version $NEW_VERSION is valid (greater than $BASE_VERSION)"
-            echo "VALIDATE_VERSION_RESULT=success" >> $GITHUB_ENV
           else
             echo "::error::Version $NEW_VERSION must be greater than $BASE_VERSION"
-            echo "VALIDATE_VERSION_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS Validate version," >> $GITHUB_ENV
             exit 1
           fi
 
-      # Step 3: Validate flows_to_deploy.json
-      - name: Validate flows_to_deploy.json
-        id: validate_flows
-        continue-on-error: true
+  validate_flows:
+    name: config-file
+    runs-on: ubuntu-latest
+    needs: up-to-date
+    outputs:
+      modified_folders: ${{ steps.modified.outputs.folders }}
+
+    steps:
+      - name: Checkout code from PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Get modified folders from PR compared to base branch
+        id: modified
         run: |
           BASE_BRANCH=${{ github.base_ref }}
           git fetch origin $BASE_BRANCH
-          git checkout $BASE_BRANCH
+          git fetch origin ${{ github.head_ref }}
 
-          git checkout ${{ github.head_ref }}
           CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
-            echo "No changes detected in my-project/resources/"
-            echo "VALIDATE_FLOWS_RESULT=success" >> $GITHUB_ENV
+            echo "folders=" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
-          echo "Modified folders:"
-          echo "$MODIFIED_FOLDERS"
+          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u | paste -sd "," -)
+          echo "Modified folders: $MODIFIED_FOLDERS"
+          echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_OUTPUT
 
-          echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
-            if [ -z "$folder" ]; then continue; fi
+      - name: Validate flows_to_deploy.json
+        run: |
+          echo "Validating modified folders in flows_to_deploy.json..."
+          MODIFIED="${{ steps.modified.outputs.folders }}"
+          if [ -z "$MODIFIED" ]; then
+            echo "No modified folders to validate."
+            exit 0
+          fi
+
+          IFS=',' read -ra MODIFIED_ARRAY <<< "$MODIFIED"
+
+          for folder in "${MODIFIED_ARRAY[@]}"; do
             echo "🔍 Checking folder: '$folder'"
             jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
           done
@@ -125,51 +142,108 @@ jobs:
           if [ -f invalid_folders.txt ]; then
             echo "❌ The following folders are not enabled for deploy:"
             cat invalid_folders.txt
-            echo "VALIDATE_FLOWS_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS Validate flows_to_deploy.json," >> $GITHUB_ENV
             exit 1
           else
             echo "✅ All modified folders are enabled for deploy."
-            echo "VALIDATE_FLOWS_RESULT=success" >> $GITHUB_ENV
           fi
 
-      # Step 4: Lint JSON
-      - name: JSON Lint
-        id: json_lint
-        continue-on-error: true
+  flows-traceability:
+    name: flows-traceability
+    runs-on: ubuntu-latest
+    needs: [up-to-date, validate_flows]
+
+    steps:
+      - name: Checkout base branch (develop)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base_branch
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          path: pr_branch
+
+      - name: Validate traceability and folder deployment
         run: |
+          cd pr_branch
+          echo "🔍 Validating flows_to_deploy.json traceability and modified folders..."
+
+          BASE_FLOWS="../base_branch/flows_to_deploy.json"
+          PR_FLOWS="flows_to_deploy.json"
+          MODIFIED="${{ needs.validate_flows.outputs.modified_folders }}"
+
+          echo "Modified folders received: $MODIFIED"
+
+          if [ ! -f "$BASE_FLOWS" ] || [ ! -f "$PR_FLOWS" ]; then
+            echo "::error::flows_to_deploy.json missing in one of the branches"
+            exit 1
+          fi
+
+          jq -c '.[]' "$BASE_FLOWS" | while read base_app; do
+            app=$(echo "$base_app" | jq -r '.application')
+            was_enabled=$(echo "$base_app" | jq -r '.deploy')
+            if [ "$was_enabled" = "true" ]; then
+              now_enabled=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' "$PR_FLOWS")
+              if [ "$now_enabled" != "true" ]; then
+                echo "::error::Deploy flag for application '$app' was previously set to true and is now missing or set to false"
+                exit 1
+              fi
+            fi
+          done
+
+          echo "✅ All previously enabled applications are still marked for deploy."
+
+          IFS=',' read -ra MODIFIED_ARRAY <<< "$MODIFIED"
+          jq -c '.[] | select(.deploy == true)' "$PR_FLOWS" | while read deploy_app; do
+            app=$(echo "$deploy_app" | jq -r '.application')
+            found=false
+            for folder in "${MODIFIED_ARRAY[@]}"; do
+              if [ "$app" = "$folder" ]; then
+                found=true
+                break
+              fi
+            done
+
+            if [ "$found" = false ]; then
+              echo "::error::Application '$app' is marked as deploy: true but no changes were made to its folder"
+              exit 1
+            fi
+          done
+
+          echo "✅ All deploy:true applications correspond to modified folders."
+
+  json-lint:
+    name: json-lint
+    runs-on: ubuntu-latest
+    needs: up-to-date
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Validate JSON syntax and duplicates
+        run: |
+          echo "🔍 Validating flows_to_deploy.json..."
           if [ ! -f "flows_to_deploy.json" ]; then
-            echo "::error::File flows_to_deploy.json not found"
-            echo "JSON_LINT_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS JSON Lint," >> $GITHUB_ENV
+            echo "::error file=flows_to_deploy.json::File not found"
             exit 1
           fi
 
           if ! jq empty flows_to_deploy.json 2> jq_error.log; then
-            echo "::error::Invalid JSON syntax"
-            echo "JSON_LINT_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS JSON Lint," >> $GITHUB_ENV
+            echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
+            cat jq_error.log
             exit 1
           fi
 
           DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
           if [ -n "$DUPLICATES" ]; then
-            echo "::error::Duplicate application names found"
-            echo "JSON_LINT_RESULT=failure" >> $GITHUB_ENV
-            echo "FAILED_STEPS=$FAILED_STEPS JSON Lint," >> $GITHUB_ENV
+            echo "::error file=flows_to_deploy.json::Duplicate application names found: $DUPLICATES"
             exit 1
           fi
 
-          echo "✅ flows_to_deploy.json validation passed."
-          echo "JSON_LINT_RESULT=success" >> $GITHUB_ENV
-
-      # Final Step: Global Validation
-      - name: Final Validation
-        run: |
-          if [ "$UP_TO_DATE_RESULT" != "success" ] || [ "$VALIDATE_VERSION_RESULT" != "success" ] || [ "$VALIDATE_FLOWS_RESULT" != "success" ] || [ "$JSON_LINT_RESULT" != "success" ]; then
-            echo "❌ One or more checks failed."
-            echo "Failed steps: $FAILED_STEPS"
-            exit 1
-          else
-            echo "✅ All checks passed successfully."
-          fi
+          echo "✅ flows_to_deploy.json passed syntax and duplication check"
