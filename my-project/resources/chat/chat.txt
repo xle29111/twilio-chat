@@ -1,8 +1,7 @@
 
-chat v3.6.5
+chat v3.6.6
 
-changes from alm
-chat v3.6.4
+
 
 
 
