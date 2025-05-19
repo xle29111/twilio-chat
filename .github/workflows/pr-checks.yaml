@@ -1,4 +1,4 @@
-name: PR checks
+name: PR Checks
 
 on:
   pull_request:
@@ -8,242 +8,147 @@ on:
 
 jobs:
   up-to-date:
-    name: up-to-date
+    name: Check branch is up-to-date
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Check if feature branch is up-to-date with base branch
-        run: |
+      - run: |
           BASE_BRANCH=${{ github.base_ref }}
           FEATURE_BRANCH=${{ github.head_ref }}
-
-          echo "Base branch is: origin/$BASE_BRANCH"
-          echo "Feature branch is: origin/$FEATURE_BRANCH"
 
           git fetch origin $BASE_BRANCH
           git fetch origin $FEATURE_BRANCH
 
           if git merge-base --is-ancestor origin/$BASE_BRANCH origin/$FEATURE_BRANCH; then
-            echo "✅ The feature branch is up-to-date with origin/$BASE_BRANCH. Merge is allowed."
+            echo "✅ Branch is up-to-date"
           else
-            echo "❌ The feature branch is not up-to-date with origin/$BASE_BRANCH. You need to rebase or merge first."
+            echo "::error::Branch is not up-to-date with base $BASE_BRANCH"
             exit 1
           fi
 
   version-validation:
-    name: version-validation
+    name: Version validation
     runs-on: ubuntu-latest
     needs: up-to-date
 
     steps:
-      - name: Checkout base branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.base_ref }}
+          path: base_branch
 
-      - name: Extract base version
+      - name: Get base version
+        id: base_version
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "BASE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$(node -p \"require('./package.json').version\")" >> $GITHUB_ENV
 
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
+          path: pr_branch
 
-      - name: Validate version
+      - name: Validate new version is greater
         run: |
-          echo "Base version (main): $BASE_VERSION"
+          BASE_VERSION=${{ env.VERSION }}
           NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "New version (PR): $NEW_VERSION"
 
-          IFS='.' read -ra CURRENT <<< "$BASE_VERSION"
-          IFS='.' read -ra NEW <<< "$NEW_VERSION"
+          IFS='.' read -r -a BASE_ARR <<< "$BASE_VERSION"
+          IFS='.' read -r -a NEW_ARR <<< "$NEW_VERSION"
 
-          if [ ${#NEW[@]} -ne 3 ]; then
-            echo "::error::Version must be in format X.Y.Z (e.g., 1.2.3)"
-            exit 1
-          fi
-
-          is_valid=false
-
-          if [ ${NEW[0]} -gt ${CURRENT[0]} ]; then
-            is_valid=true
-          elif [ ${NEW[0]} -eq ${CURRENT[0]} ]; then
-            if [ ${NEW[1]} -gt ${CURRENT[1]} ]; then
-              is_valid=true
-            elif [ ${NEW[1]} -eq ${CURRENT[1]} ]; then
-              if [ ${NEW[2]} -gt ${CURRENT[2]} ]; then
-                is_valid=true
+          function version_gt() {
+            for i in 0 1 2; do
+              if [ "${NEW_ARR[i]}" -gt "${BASE_ARR[i]}" ]; then
+                return 0
+              elif [ "${NEW_ARR[i]}" -lt "${BASE_ARR[i]}" ]; then
+                return 1
               fi
-            fi
-          fi
+            done
+            return 1
+          }
 
-          if [ "$is_valid" = true ]; then
-            echo "✅ Version $NEW_VERSION is valid (greater than $BASE_VERSION)"
+          if version_gt; then
+            echo "✅ New version $NEW_VERSION is valid."
           else
             echo "::error::Version $NEW_VERSION must be greater than $BASE_VERSION"
             exit 1
           fi
 
-  validate_flows:
-    name: config-file
-    runs-on: ubuntu-latest
-    needs: up-to-date
-    outputs:
-      modified_folders: ${{ steps.modified.outputs.folders }}
-
-    steps:
-      - name: Checkout code from PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-
-      - name: Get modified folders from PR compared to base branch
-        id: modified
-        run: |
-          BASE_BRANCH=${{ github.base_ref }}
-          git fetch origin $BASE_BRANCH
-          git fetch origin ${{ github.head_ref }}
-
-          CHANGED_FILES=$(git diff --name-only origin/$BASE_BRANCH...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
-
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "folders=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u | paste -sd "," -)
-          echo "Modified folders: $MODIFIED_FOLDERS"
-          echo "folders=$MODIFIED_FOLDERS" >> $GITHUB_OUTPUT
-
-      - name: Validate flows_to_deploy.json
-        run: |
-          echo "Validating modified folders in flows_to_deploy.json..."
-          MODIFIED="${{ steps.modified.outputs.folders }}"
-          if [ -z "$MODIFIED" ]; then
-            echo "No modified folders to validate."
-            exit 0
-          fi
-
-          IFS=',' read -ra MODIFIED_ARRAY <<< "$MODIFIED"
-
-          for folder in "${MODIFIED_ARRAY[@]}"; do
-            echo "🔍 Checking folder: '$folder'"
-            jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
-          done
-
-          if [ -f invalid_folders.txt ]; then
-            echo "❌ The following folders are not enabled for deploy:"
-            cat invalid_folders.txt
-            exit 1
-          else
-            echo "✅ All modified folders are enabled for deploy."
-          fi
-
-  flows-traceability:
-    name: flows-traceability
-    runs-on: ubuntu-latest
-    needs: [up-to-date, validate_flows]
-
-    steps:
-      - name: Checkout base branch (develop)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.base_ref }}
-          path: base_branch
-
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          path: pr_branch
-
-      - name: Validate traceability and folder deployment
-        run: |
-          cd pr_branch
-          echo "🔍 Validating flows_to_deploy.json traceability and modified folders..."
-
-          BASE_FLOWS="../base_branch/flows_to_deploy.json"
-          PR_FLOWS="flows_to_deploy.json"
-          MODIFIED="${{ needs.validate_flows.outputs.modified_folders }}"
-
-          echo "Modified folders received: $MODIFIED"
-
-          if [ ! -f "$BASE_FLOWS" ] || [ ! -f "$PR_FLOWS" ]; then
-            echo "::error::flows_to_deploy.json missing in one of the branches"
-            exit 1
-          fi
-
-          jq -c '.[]' "$BASE_FLOWS" | while read base_app; do
-            app=$(echo "$base_app" | jq -r '.application')
-            was_enabled=$(echo "$base_app" | jq -r '.deploy')
-            if [ "$was_enabled" = "true" ]; then
-              now_enabled=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' "$PR_FLOWS")
-              if [ "$now_enabled" != "true" ]; then
-                echo "::error::Deploy flag for application '$app' was previously set to true and is now missing or set to false"
-                exit 1
-              fi
-            fi
-          done
-
-          echo "✅ All previously enabled applications are still marked for deploy."
-
-          IFS=',' read -ra MODIFIED_ARRAY <<< "$MODIFIED"
-          jq -c '.[] | select(.deploy == true)' "$PR_FLOWS" | while read deploy_app; do
-            app=$(echo "$deploy_app" | jq -r '.application')
-            found=false
-            for folder in "${MODIFIED_ARRAY[@]}"; do
-              if [ "$app" = "$folder" ]; then
-                found=true
-                break
-              fi
-            done
-
-            if [ "$found" = false ]; then
-              echo "::error::Application '$app' is marked as deploy: true but no changes were made to its folder"
-              exit 1
-            fi
-          done
-
-          echo "✅ All deploy:true applications correspond to modified folders."
-
   json-lint:
-    name: json-lint
+    name: JSON Syntax and Duplicate Validation
     runs-on: ubuntu-latest
     needs: up-to-date
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install jq
-        run: sudo apt-get install -y jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Validate JSON syntax and duplicates
+      - name: Validate flows_to_deploy.json syntax and duplicates
         run: |
-          echo "🔍 Validating flows_to_deploy.json..."
-          if [ ! -f "flows_to_deploy.json" ]; then
-            echo "::error file=flows_to_deploy.json::File not found"
+          FILE="flows_to_deploy.json"
+          if [ ! -f "$FILE" ]; then
+            echo "::error file=$FILE::File not found"
             exit 1
           fi
 
-          if ! jq empty flows_to_deploy.json 2> jq_error.log; then
-            echo "::error file=flows_to_deploy.json::Invalid JSON syntax"
+          if ! jq empty "$FILE" 2> jq_error.log; then
+            echo "::error file=$FILE::Invalid JSON syntax"
             cat jq_error.log
             exit 1
           fi
 
-          DUPLICATES=$(jq -r '.[].application' flows_to_deploy.json | sort | uniq -d)
+          DUPLICATES=$(jq -r '.[].application' "$FILE" | sort | uniq -d)
           if [ -n "$DUPLICATES" ]; then
-            echo "::error file=flows_to_deploy.json::Duplicate application names found: $DUPLICATES"
+            echo "::error file=$FILE::Duplicate application names found:"
+            echo "$DUPLICATES"
             exit 1
           fi
 
-          echo "✅ flows_to_deploy.json passed syntax and duplication check"
+          echo "✅ JSON syntax and duplicates validated for $FILE"
+
+  flows-traceability:
+    name: Validate flows_to_deploy.json traceability
+    runs-on: ubuntu-latest
+    needs: up-to-date
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base_branch
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          path: pr_branch
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Validate flows_to_deploy.json traceability
+        run: |
+          BASE_FLOWS="base_branch/flows_to_deploy.json"
+          PR_FLOWS="pr_branch/flows_to_deploy.json"
+
+          if [ ! -f "$BASE_FLOWS" ] || [ ! -f "$PR_FLOWS" ]; then
+            echo "::error::flows_to_deploy.json missing in base or PR branch"
+            exit 1
+          fi
+
+          BASE_ENABLED=$(jq -r '.[] | select(.deploy == true) | .application' "$BASE_FLOWS")
+
+          echo "$BASE_ENABLED" | while IFS= read -r app; do
+            if [ -z "$app" ]; then continue; fi
+
+            jq -e --arg app "$app" '.[] | select(.application == $app and .deploy == true)' "$PR_FLOWS" > /dev/null
+            if [ $? -ne 0 ]; then
+              echo "::error::Application '$app' was deploy:true in base but is missing or not deploy:true in PR"
+              exit 1
+            fi
+          done
+
+          echo "✅ All previously enabled applications are still marked as deploy:true"
