@@ -95,7 +95,7 @@ jobs:
             exit 1
           fi
 
-  validate_flows:
+  config-file:
     name: config-file
     runs-on: ubuntu-latest
     needs: up-to-date
