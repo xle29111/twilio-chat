@@ -95,7 +95,7 @@ jobs:
             exit 1
           fi
 
-  validate_flows:
+  config-file:
     name: config-file
     runs-on: ubuntu-latest
     needs: up-to-date
@@ -212,7 +212,7 @@ jobs:
   flows-traceability-check:
     name: flows traceability
     runs-on: ubuntu-latest
-    needs: up-to-date
+    needs: config-file
 
     steps:
       - name: Checkout base branch
