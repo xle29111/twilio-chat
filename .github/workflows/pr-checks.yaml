@@ -124,7 +124,13 @@ jobs:
             echo "No changes detected in my-project/resources/"
             echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
           else
-            MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
+            # Handle folder names with spaces correctly
+            MODIFIED_FOLDERS=$(while IFS= read -r file; do
+              folder=$(echo "$file" | cut -d'/' -f3)
+              echo "$folder"
+            done <<< "$CHANGED_FILES" | sort -u)
+            
+            # Store as newline-separated list
             echo "Modified folders:"
             echo "$MODIFIED_FOLDERS"
             echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
@@ -142,64 +148,68 @@ jobs:
 
       - name: Validate deployments
         run: |
+          # Read MODIFIED_FOLDERS as array, handling names with spaces
+          IFS=$'\n' read -r -d '' -a MODIFIED_ARRAY <<< "$MODIFIED_FOLDERS"
+          
           ERROR_COUNT=0
-          INVALID_APPS=""
-          MISSING_DEPLOYMENTS=""
+          INVALID_APPS=()
+          MISSING_DEPLOYMENTS=()
 
-          # Check 1: Verify all applications set to true are either modified or already true in base
+          # Check 1: Verify all true deployments are valid
           jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while read -r app; do
             echo "Checking deployment status for: $app"
             
-            # Check if application was modified
-            if [[ "$MODIFIED_FOLDERS" =~ (^| )"$app"( |$) ]]; then
+            # Check if modified (handle names with spaces)
+            is_modified=false
+            for modified_app in "${MODIFIED_ARRAY[@]}"; do
+              if [ "$modified_app" == "$app" ]; then
+                is_modified=true
+                break
+              fi
+            done
+            
+            if [ "$is_modified" = true ]; then
               echo "✅ $app: Valid deployment (application was modified)"
               continue
             fi
             
-            # Check if already true in base branch
+            # Check if already true in base
             BASE_DEPLOY=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' base_flows_to_deploy.json)
             if [ "$BASE_DEPLOY" == "true" ]; then
               echo "✅ $app: Valid deployment (already true in base branch)"
               continue
             fi
             
-            # If we get here, it's an invalid deployment
             echo "❌ $app: Invalid deployment - not modified and not true in base branch"
-            INVALID_APPS="$INVALID_APPS $app"
+            INVALID_APPS+=("$app")
             ERROR_COUNT=$((ERROR_COUNT+1))
           done
 
-          # Check 2: Verify all modified applications are set to true
-          if [ -n "$MODIFIED_FOLDERS" ]; then
-            echo "$MODIFIED_FOLDERS" | tr ' ' '\n' | while read -r folder; do
-              if [ -z "$folder" ]; then continue; fi
-              
-              PR_DEPLOY=$(jq -r --arg folder "$folder" '.[] | select(.application == $folder) | .deploy' flows_to_deploy.json)
-              if [ "$PR_DEPLOY" != "true" ]; then
-                echo "❌ $folder: Modified but not set to true in flows_to_deploy.json"
-                MISSING_DEPLOYMENTS="$MISSING_DEPLOYMENTS $folder"
-                ERROR_COUNT=$((ERROR_COUNT+1))
-              else
-                echo "✅ $folder: Modified and properly set to true"
-              fi
-            done
-          fi
+          # Check 2: Verify all modified apps are set to true
+          for folder in "${MODIFIED_ARRAY[@]}"; do
+            [ -z "$folder" ] && continue
+            
+            PR_DEPLOY=$(jq -r --arg folder "$folder" '.[] | select(.application == $folder) | .deploy' flows_to_deploy.json)
+            if [ "$PR_DEPLOY" != "true" ]; then
+              echo "❌ $folder: Modified but not set to true in flows_to_deploy.json"
+              MISSING_DEPLOYMENTS+=("$folder")
+              ERROR_COUNT=$((ERROR_COUNT+1))
+            else
+              echo "✅ $folder: Modified and properly set to true"
+            fi
+          done
 
           if [ $ERROR_COUNT -gt 0 ]; then
             echo "::error::Invalid configurations detected in flows_to_deploy.json"
             
-            if [ -n "$INVALID_APPS" ]; then
+            if [ ${#INVALID_APPS[@]} -gt 0 ]; then
               echo "The following applications cannot be set to 'true':"
-              for app in $INVALID_APPS; do
-                echo " - $app (not modified and not true in base branch)"
-              done
+              printf ' - %s\n' "${INVALID_APPS[@]}"
             fi
             
-            if [ -n "$MISSING_DEPLOYMENTS" ]; then
+            if [ ${#MISSING_DEPLOYMENTS[@]} -gt 0 ]; then
               echo "The following modified applications must be set to 'true':"
-              for folder in $MISSING_DEPLOYMENTS; do
-                echo " - $folder"
-              done
+              printf ' - %s\n' "${MISSING_DEPLOYMENTS[@]}"
             fi
             
             echo "Deployment Rules:"
