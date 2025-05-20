@@ -123,21 +123,21 @@ jobs:
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
             echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
+            echo "MODIFIED_FOLDERS_JSON=[]" >> $GITHUB_ENV
           else
-            MODIFIED_FOLDERS=$(while IFS= read -r file; do
+            MODIFIED_FOLDERS_JSON=$(echo "$CHANGED_FILES" | while IFS= read -r file; do
               folder=$(echo "$file" | cut -d'/' -f3)
-              echo "$folder"
-            done <<< "$CHANGED_FILES" | sort -u)
-            
-            echo "Modified folders:"
-            echo "$MODIFIED_FOLDERS"
-            echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
-            echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+              echo "\"$folder\""
+            done | jq -sc '.')
+
+            echo "Modified folders (JSON): $MODIFIED_FOLDERS_JSON"
+            echo "MODIFIED_FOLDERS_JSON=$MODIFIED_FOLDERS_JSON" >> $GITHUB_ENV
+
+            MODIFIED_FOLDERS=$(echo "$MODIFIED_FOLDERS_JSON" | jq -r '.[]' | tr '\n' ' ')
+            echo "MODIFIED_FOLDERS=$MODIFIED_FOLDERS" >> $GITHUB_ENV
           fi
 
       - name: Get base branch flows_to_deploy.json
-        id: get-base-flows
         run: |
           BASE_BRANCH=${{ github.base_ref }}
           git fetch origin $BASE_BRANCH
@@ -146,15 +146,15 @@ jobs:
 
       - name: Validate deployments
         run: |
-          IFS=$'\n' read -r -d '' -a MODIFIED_ARRAY <<< "$MODIFIED_FOLDERS"
-          
+          MODIFIED_ARRAY=($(echo "$MODIFIED_FOLDERS_JSON" | jq -r '.[]'))
+
           ERROR_COUNT=0
           INVALID_APPS=()
           MISSING_DEPLOYMENTS=()
 
           jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while read -r app; do
-            echo "Checking deployment status for: $app"
-            
+            echo "Checking deployment status for: \"$app\""
+
             is_modified=false
             for modified_app in "${MODIFIED_ARRAY[@]}"; do
               if [ "$modified_app" == "$app" ]; then
@@ -162,26 +162,25 @@ jobs:
                 break
               fi
             done
-            
+
             if [ "$is_modified" = true ]; then
-              echo "✅ $app: Valid deployment (application was modified)"
+              echo "✅ \"$app\": Valid deployment (application was modified)"
               continue
             fi
-            
+
             BASE_DEPLOY=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' base_flows_to_deploy.json)
             if [ "$BASE_DEPLOY" == "true" ]; then
-              echo "✅ $app: Valid deployment (already true in base branch)"
+              echo "✅ \"$app\": Valid deployment (already true in base branch)"
               continue
             fi
-            
-            echo "❌ $app: Invalid deployment - not modified and not true in base branch"
+
+            echo "❌ \"$app\": Invalid deployment - not modified and not true in base branch"
             INVALID_APPS+=("$app")
             ERROR_COUNT=$((ERROR_COUNT+1))
           done
 
           for folder in "${MODIFIED_ARRAY[@]}"; do
             [ -z "$folder" ] && continue
-            
             PR_DEPLOY=$(jq -r --arg folder "$folder" '.[] | select(.application == $folder) | .deploy' flows_to_deploy.json)
             if [ "$PR_DEPLOY" != "true" ]; then
               echo "❌ \"$folder\": Modified but not set to true in flows_to_deploy.json"
@@ -194,17 +193,17 @@ jobs:
 
           if [ $ERROR_COUNT -gt 0 ]; then
             echo "::error::Invalid configurations detected in flows_to_deploy.json"
-            
+
             if [ ${#INVALID_APPS[@]} -gt 0 ]; then
               echo "The following applications cannot be set to 'true':"
               printf ' - "%s"\n' "${INVALID_APPS[@]}"
             fi
-            
+
             if [ ${#MISSING_DEPLOYMENTS[@]} -gt 0 ]; then
               echo "The following modified applications must be set to 'true':"
               printf ' - "%s"\n' "${MISSING_DEPLOYMENTS[@]}"
             fi
-            
+
             echo "Deployment Rules:"
             echo "1. Applications can only be set to 'true' if:"
             echo "   - They were modified in this PR, OR"
