@@ -128,9 +128,8 @@ jobs:
             MODIFIED_FOLDERS=$(while IFS= read -r file; do
               folder=$(echo "$file" | cut -d'/' -f3)
               echo "$folder"
-            done <<< "$CHANGED_FILES" | sort -u)
+            done <<< "$CHANGED_FILES" | sort -u | tr '\n' ' ')
             
-            # Store as newline-separated list
             echo "Modified folders:"
             echo "$MODIFIED_FOLDERS"
             echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
@@ -148,18 +147,18 @@ jobs:
 
       - name: Validate deployments
         run: |
-          # Read MODIFIED_FOLDERS as array, handling names with spaces
-          IFS=$'\n' read -r -d '' -a MODIFIED_ARRAY <<< "$MODIFIED_FOLDERS"
+          # Convert MODIFIED_FOLDERS to array properly
+          IFS=' ' read -r -a MODIFIED_ARRAY <<< "$MODIFIED_FOLDERS"
           
           ERROR_COUNT=0
           INVALID_APPS=()
           MISSING_DEPLOYMENTS=()
 
-          # Check 1: Verify all true deployments are valid
+          # Check 1: Validate applications set to true
           jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while read -r app; do
             echo "Checking deployment status for: $app"
             
-            # Check if modified (handle names with spaces)
+            # Check if application was modified
             is_modified=false
             for modified_app in "${MODIFIED_ARRAY[@]}"; do
               if [ "$modified_app" == "$app" ]; then
@@ -173,7 +172,7 @@ jobs:
               continue
             fi
             
-            # Check if already true in base
+            # Check if already true in base branch
             BASE_DEPLOY=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' base_flows_to_deploy.json)
             if [ "$BASE_DEPLOY" == "true" ]; then
               echo "✅ $app: Valid deployment (already true in base branch)"
@@ -204,12 +203,16 @@ jobs:
             
             if [ ${#INVALID_APPS[@]} -gt 0 ]; then
               echo "The following applications cannot be set to 'true':"
-              printf ' - %s\n' "${INVALID_APPS[@]}"
+              for app in "${INVALID_APPS[@]}"; do
+                echo " - $app (not modified and not true in base branch)"
+              done
             fi
             
             if [ ${#MISSING_DEPLOYMENTS[@]} -gt 0 ]; then
               echo "The following modified applications must be set to 'true':"
-              printf ' - %s\n' "${MISSING_DEPLOYMENTS[@]}"
+              for folder in "${MISSING_DEPLOYMENTS[@]}"; do
+                echo " - \"$folder\""
+              done
             fi
             
             echo "Deployment Rules:"
