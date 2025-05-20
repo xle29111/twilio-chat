@@ -273,12 +273,12 @@ jobs:
           BASE_FILE="base_branch/flows_to_deploy.json"
           PR_FILE="pr_branch/flows_to_deploy.json"
 
-          # Obtener archivos desde el job anterior
+          # Get files from  last job
           mkdir -p base_branch pr_branch
           git show origin/${{ github.base_ref }}:flows_to_deploy.json > "$BASE_FILE"
           cp flows_to_deploy.json "$PR_FILE"
 
-          # Recalcular carpetas modificadas
+          # Recalculate modified folders
           echo "📂 Calculating modified folders..."
           git fetch origin ${{ github.base_ref }}
           git fetch origin ${{ github.head_ref }}
@@ -294,7 +294,7 @@ jobs:
           echo "Modified folders:"
           echo "$MODIFIED_FOLDERS"
 
-          # Validar configuraciones en flows_to_deploy.json del PR
+          # Validate configurations in flows_to_deploy.json of PR
           jq -c '.[]' "$PR_FILE" | while read -r entry; do
             app=$(echo "$entry" | jq -r '.application')
             deploy=$(echo "$entry" | jq -r '.deploy')
