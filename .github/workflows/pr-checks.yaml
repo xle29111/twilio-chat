@@ -123,13 +123,6 @@ jobs:
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
             echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
-            # Fail if any application is set to deploy=true when no changes exist
-            if jq -e '.[] | select(.deploy == true)' flows_to_deploy.json > /dev/null; then
-              echo "::error::No folders modified but some applications are set to deploy=true"
-              echo "Applications set to deploy=true:"
-              jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json
-              exit 1
-            fi
             exit 0
           fi
 
@@ -141,48 +134,60 @@ jobs:
           echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Validate flows_to_deploy.json
+      - name: Get base branch flows_to_deploy.json
+        id: get-base-flows
         run: |
-          # If no folders were modified and we passed the previous check, validation passes
+          BASE_BRANCH=${{ github.base_ref }}
+          git fetch origin $BASE_BRANCH
+          git show origin/$BASE_BRANCH:flows_to_deploy.json > base_flows_to_deploy.json
+          echo "BASE_FLOWS_FILE=base_flows_to_deploy.json" >> $GITHUB_ENV
+
+      - name: Validate flows_to_deploy.json configurations
+        run: |
           if [ -z "$MODIFIED_FOLDERS" ]; then
-            echo "No folders modified and no applications set to deploy=true - validation passed."
+            echo "No folders to validate."
             exit 0
           fi
 
-          # Check 1: Verify all modified folders are enabled for deploy
+          ERROR_COUNT=0
+          
           echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
             if [ -z "$folder" ]; then continue; fi
+            
             echo "🔍 Checking folder: '$folder'"
-            jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
-          done
-
-          if [ -f invalid_folders.txt ]; then
-            echo "❌ The following folders are not enabled for deploy:"
-            cat invalid_folders.txt | while read f; do
-              echo " - $f"
-            done
-            exit 1
-          else
-            echo "✅ All modified folders are enabled for deploy."
-          fi
-
-          # Check 2: Verify no applications are set to true if they're not in MODIFIED_FOLDERS
-          echo "🔍 Checking for applications set to true without modifications..."
-          jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while IFS= read -r app; do
-            if ! echo "$MODIFIED_FOLDERS" | grep -qx "$app"; then
-              echo "❌ Application '$app' is set to deploy=true but is not in modified folders"
-              echo "$app" >> unauthorized_deploy.txt
+            
+            # Check if folder is set to true in PR's flows_to_deploy.json
+            PR_DEPLOY=$(jq -r --arg folder "$folder" '.[] | select(.application == $folder) | .deploy' flows_to_deploy.json)
+            
+            # Check if folder is set to true in base branch's flows_to_deploy.json
+            BASE_DEPLOY=$(jq -r --arg folder "$folder" '.[] | select(.application == $folder) | .deploy' "$BASE_FLOWS_FILE")
+            
+            # Case a: Not in MODIFIED_FOLDERS but true in remote -> OK
+            if [ "$PR_DEPLOY" = "true" ] && [ "$BASE_DEPLOY" = "true" ]; then
+              echo "✅ $folder: Already enabled for deploy in base branch (no change needed)"
+              continue
+            fi
+            
+            # Case b: Not in MODIFIED_FOLDERS and not true in remote -> FAIL
+            if [ "$PR_DEPLOY" = "true" ] && [ "$BASE_DEPLOY" != "true" ]; then
+              echo "❌ $folder: Cannot be enabled for deploy as it's not modified in this PR and not enabled in base branch"
+              echo "$folder" >> invalid_folders.txt
+              ERROR_COUNT=$((ERROR_COUNT+1))
             fi
           done
 
-          if [ -f unauthorized_deploy.txt ]; then
-            echo "::error file=flows_to_deploy.json::The following applications are set to deploy=true but were not modified:"
-            cat unauthorized_deploy.txt | while read f; do
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "::error::Invalid configurations detected in flows_to_deploy.json"
+            echo "The following applications cannot be set to 'true':"
+            cat invalid_folders.txt | while read f; do
               echo " - $f"
             done
+            echo "Rules:"
+            echo "a) If application is not modified but enabled in base branch -> OK"
+            echo "b) If application is not modified and not enabled in base branch -> FAIL"
             exit 1
           else
-            echo "✅ No unauthorized deployments found."
+            echo "✅ All configurations in flows_to_deploy.json are valid"
           fi
 
   json-lint:
