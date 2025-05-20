@@ -140,54 +140,40 @@ jobs:
           git show origin/$BASE_BRANCH:flows_to_deploy.json > base_flows_to_deploy.json
           echo "BASE_FLOWS_FILE=base_flows_to_deploy.json" >> $GITHUB_ENV
 
-      - name: Compare flows_to_deploy.json changes
-        id: compare-flows
+      - name: Validate deployments
         run: |
-          # Get list of applications that changed from false to true
-          CHANGED_APPS=$(jq -n \
-            --argfile base base_flows_to_deploy.json \
-            --argfile pr flows_to_deploy.json \
-            '[
-              $base[] as $b | 
-              $pr[] as $p | 
-              select($b.application == $p.application and $b.deploy == false and $p.deploy == true) | 
-              $p.application
-            ] | join(" ")' | tr -d '"')
-
-          echo "CHANGED_APPS=${CHANGED_APPS}" >> $GITHUB_ENV
-          echo "Applications changed from false to true: ${CHANGED_APPS}"
-
-      - name: Validate flows_to_deploy.json configurations
-        run: |
-          if [ -z "$MODIFIED_FOLDERS" ] && [ -z "$CHANGED_APPS" ]; then
-            echo "No folders or flow changes to validate."
-            exit 0
-          fi
-
-          ERROR_COUNT=0
-
-          # Check each application that was changed to true
-          for app in $CHANGED_APPS; do
-            # Check if the application is in MODIFIED_FOLDERS
-            if [[ ! "$MODIFIED_FOLDERS" =~ (^| )"$app"( |$) ]]; then
-              echo "❌ $app: Cannot be enabled for deploy (changed from false to true) as it's not modified in this PR"
-              echo "$app" >> invalid_apps.txt
-              ERROR_COUNT=$((ERROR_COUNT+1))
-            else
-              echo "✅ $app: Valid change to true (application was modified)"
+          # Check all applications set to true in PR
+          jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while read -r app; do
+            echo "Checking application: $app"
+            
+            # Check if application was modified
+            if [[ "$MODIFIED_FOLDERS" =~ (^| )"$app"( |$) ]]; then
+              echo "✅ $app: Valid (application was modified)"
+              continue
             fi
+            
+            # Check if already true in base branch
+            BASE_DEPLOY=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' base_flows_to_deploy.json)
+            if [ "$BASE_DEPLOY" == "true" ]; then
+              echo "✅ $app: Valid (already true in base branch)"
+              continue
+            fi
+            
+            # If we get here, it's an invalid deployment
+            echo "❌ $app: Invalid - not modified and not true in base branch"
+            echo "$app" >> invalid_apps.txt
           done
 
-          if [ $ERROR_COUNT -gt 0 ]; then
-            echo "::error::Invalid configurations detected in flows_to_deploy.json"
-            echo "The following applications cannot be set to 'true' as they weren't modified:"
+          if [ -f "invalid_apps.txt" ]; then
+            echo "::error::Invalid deployments detected:"
             cat invalid_apps.txt | while read app; do
-              echo " - $app"
+              echo " - $app cannot be set to 'true' because:"
+              echo "   - It wasn't modified in this PR"
+              echo "   - It wasn't already true in the base branch"
             done
-            echo "Rule: An application can only be changed from 'false' to 'true' if it was modified in this PR"
             exit 1
           else
-            echo "✅ All configurations in flows_to_deploy.json are valid"
+            echo "✅ All deployments are valid"
           fi
 
   json-lint:
