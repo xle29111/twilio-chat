@@ -123,6 +123,13 @@ jobs:
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
             echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
+            # Fail if any application is set to deploy=true when no changes exist
+            if jq -e '.[] | select(.deploy == true)' flows_to_deploy.json > /dev/null; then
+              echo "::error::No folders modified but some applications are set to deploy=true"
+              echo "Applications set to deploy=true:"
+              jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json
+              exit 1
+            fi
             exit 0
           fi
 
@@ -134,33 +141,49 @@ jobs:
           echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Validate flows_to_deploy.json applications marked for deploy are modified
+      - name: Validate flows_to_deploy.json
         run: |
+          # If no folders were modified and we passed the previous check, validation passes
           if [ -z "$MODIFIED_FOLDERS" ]; then
-            echo "No folders were modified, skipping validation of deploy=true entries."
+            echo "No folders modified and no applications set to deploy=true - validation passed."
             exit 0
           fi
 
-          echo "🔍 Validating that all deploy=true applications are among the modified folders..."
+          # Check 1: Verify all modified folders are enabled for deploy
+          echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
+            if [ -z "$folder" ]; then continue; fi
+            echo "🔍 Checking folder: '$folder'"
+            jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
+          done
 
-          DEPLOYED_APPS=$(jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json)
-          INVALID_APPS=()
+          if [ -f invalid_folders.txt ]; then
+            echo "❌ The following folders are not enabled for deploy:"
+            cat invalid_folders.txt | while read f; do
+              echo " - $f"
+            done
+            exit 1
+          else
+            echo "✅ All modified folders are enabled for deploy."
+          fi
 
-          for app in $DEPLOYED_APPS; do
-            if ! echo "$MODIFIED_FOLDERS" | grep -q "^$app$"; then
-              INVALID_APPS+=("$app")
+          # Check 2: Verify no applications are set to true if they're not in MODIFIED_FOLDERS
+          echo "🔍 Checking for applications set to true without modifications..."
+          jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while IFS= read -r app; do
+            if ! echo "$MODIFIED_FOLDERS" | grep -qx "$app"; then
+              echo "❌ Application '$app' is set to deploy=true but is not in modified folders"
+              echo "$app" >> unauthorized_deploy.txt
             fi
           done
 
-          if [ ${#INVALID_APPS[@]} -ne 0 ]; then
-            echo "❌ The following applications are marked as deploy=true but were not modified in this PR:"
-            for app in "${INVALID_APPS[@]}"; do
-              echo " - $app"
+          if [ -f unauthorized_deploy.txt ]; then
+            echo "::error file=flows_to_deploy.json::The following applications are set to deploy=true but were not modified:"
+            cat unauthorized_deploy.txt | while read f; do
+              echo " - $f"
             done
             exit 1
+          else
+            echo "✅ No unauthorized deployments found."
           fi
-
-          echo "✅ All applications marked as deploy=true were properly modified."
 
   json-lint:
     name: json-lint
