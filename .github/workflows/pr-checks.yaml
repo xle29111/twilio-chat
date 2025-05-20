@@ -142,35 +142,71 @@ jobs:
 
       - name: Validate deployments
         run: |
-          # Check all applications set to true in PR
+          ERROR_COUNT=0
+          INVALID_APPS=""
+          MISSING_DEPLOYMENTS=""
+
+          # Check 1: Verify all applications set to true are either modified or already true in base
           jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while read -r app; do
-            echo "Checking application: $app"
+            echo "Checking deployment status for: $app"
             
             # Check if application was modified
             if [[ "$MODIFIED_FOLDERS" =~ (^| )"$app"( |$) ]]; then
-              echo "✅ $app: Valid (application was modified)"
+              echo "✅ $app: Valid deployment (application was modified)"
               continue
             fi
             
             # Check if already true in base branch
             BASE_DEPLOY=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' base_flows_to_deploy.json)
             if [ "$BASE_DEPLOY" == "true" ]; then
-              echo "✅ $app: Valid (already true in base branch)"
+              echo "✅ $app: Valid deployment (already true in base branch)"
               continue
             fi
             
             # If we get here, it's an invalid deployment
-            echo "❌ $app: Invalid - not modified and not true in base branch"
-            echo "$app" >> invalid_apps.txt
+            echo "❌ $app: Invalid deployment - not modified and not true in base branch"
+            INVALID_APPS="$INVALID_APPS $app"
+            ERROR_COUNT=$((ERROR_COUNT+1))
           done
 
-          if [ -f "invalid_apps.txt" ]; then
-            echo "::error::Invalid deployments detected:"
-            cat invalid_apps.txt | while read app; do
-              echo " - $app cannot be set to 'true' because:"
-              echo "   - It wasn't modified in this PR"
-              echo "   - It wasn't already true in the base branch"
+          # Check 2: Verify all modified applications are set to true
+          if [ -n "$MODIFIED_FOLDERS" ]; then
+            echo "$MODIFIED_FOLDERS" | tr ' ' '\n' | while read -r folder; do
+              if [ -z "$folder" ]; then continue; fi
+              
+              PR_DEPLOY=$(jq -r --arg folder "$folder" '.[] | select(.application == $folder) | .deploy' flows_to_deploy.json)
+              if [ "$PR_DEPLOY" != "true" ]; then
+                echo "❌ $folder: Modified but not set to true in flows_to_deploy.json"
+                MISSING_DEPLOYMENTS="$MISSING_DEPLOYMENTS $folder"
+                ERROR_COUNT=$((ERROR_COUNT+1))
+              else
+                echo "✅ $folder: Modified and properly set to true"
+              fi
             done
+          fi
+
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "::error::Invalid configurations detected in flows_to_deploy.json"
+            
+            if [ -n "$INVALID_APPS" ]; then
+              echo "The following applications cannot be set to 'true':"
+              for app in $INVALID_APPS; do
+                echo " - $app (not modified and not true in base branch)"
+              done
+            fi
+            
+            if [ -n "$MISSING_DEPLOYMENTS" ]; then
+              echo "The following modified applications must be set to 'true':"
+              for folder in $MISSING_DEPLOYMENTS; do
+                echo " - $folder"
+              done
+            fi
+            
+            echo "Deployment Rules:"
+            echo "1. Applications can only be set to 'true' if:"
+            echo "   - They were modified in this PR, OR"
+            echo "   - They were already 'true' in base branch"
+            echo "2. All modified applications must be set to 'true'"
             exit 1
           else
             echo "✅ All deployments are valid"
