@@ -157,7 +157,7 @@ jobs:
           done
 
           if [ -f invalid_folders.txt ]; then
-            echo "❌ The following folders are not enabled for deploy:"
+            echo "❌ Set to true these folders in flows_to_deploy.json:"
             cat invalid_folders.txt | while read f; do
               echo " - $f"
             done
