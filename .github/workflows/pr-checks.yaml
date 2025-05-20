@@ -123,57 +123,38 @@ jobs:
           if [ -z "$CHANGED_FILES" ]; then
             echo "No changes detected in my-project/resources/"
             echo "MODIFIED_FOLDERS=" >> $GITHUB_ENV
-          else
-            MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
-            echo "Modified folders:"
-            echo "$MODIFIED_FOLDERS"
-            echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
-            echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+            exit 0
           fi
 
-      - name: Get base branch flows_to_deploy.json
-        id: get-base-flows
-        run: |
-          BASE_BRANCH=${{ github.base_ref }}
-          git fetch origin $BASE_BRANCH
-          git show origin/$BASE_BRANCH:flows_to_deploy.json > base_flows_to_deploy.json
-          echo "BASE_FLOWS_FILE=base_flows_to_deploy.json" >> $GITHUB_ENV
+          MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
+          echo "Modified folders:"
+          echo "$MODIFIED_FOLDERS"
 
-      - name: Validate deployments
+          echo "MODIFIED_FOLDERS<<EOF" >> $GITHUB_ENV
+          echo "$MODIFIED_FOLDERS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Validate flows_to_deploy.json
         run: |
-          # Check all applications set to true in PR
-          jq -r '.[] | select(.deploy == true) | .application' flows_to_deploy.json | while read -r app; do
-            echo "Checking application: $app"
-            
-            # Check if application was modified
-            if [[ "$MODIFIED_FOLDERS" =~ (^| )"$app"( |$) ]]; then
-              echo "✅ $app: Valid (application was modified)"
-              continue
-            fi
-            
-            # Check if already true in base branch
-            BASE_DEPLOY=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' base_flows_to_deploy.json)
-            if [ "$BASE_DEPLOY" == "true" ]; then
-              echo "✅ $app: Valid (already true in base branch)"
-              continue
-            fi
-            
-            # If we get here, it's an invalid deployment
-            echo "❌ $app: Invalid - not modified and not true in base branch"
-            echo "$app" >> invalid_apps.txt
+          if [ -z "$MODIFIED_FOLDERS" ]; then
+            echo "No folders to validate."
+            exit 0
+          fi
+
+          echo "$MODIFIED_FOLDERS" | while IFS= read -r folder; do
+            if [ -z "$folder" ]; then continue; fi
+            echo "🔍 Checking folder: '$folder'"
+            jq -e --arg folder "$folder" '.[] | select(.application == $folder and .deploy == true)' flows_to_deploy.json > /dev/null || echo "$folder" >> invalid_folders.txt
           done
 
-          if [ -f "invalid_apps.txt" ]; then
-            echo "::error::Invalid deployments detected:"
-            cat invalid_apps.txt | while read app; do
-              echo " - $app cannot be set to 'true' because:"
-              echo "   - It wasn't modified in this PR"
-              echo "   - It wasn't already true in the base branch"
+          if [ -f invalid_folders.txt ]; then
+            echo "❌ The following folders are not enabled for deploy:"
+            cat invalid_folders.txt | while read f; do
+              echo " - $f"
             done
             exit 1
           else
-            echo "✅ All deployments are valid"
+            echo "✅ All modified folders are enabled for deploy."
           fi
 
   json-lint:
@@ -273,3 +254,63 @@ jobs:
           done
 
           echo "✅ flows_to_deploy.json traceability check passed."
+
+  
+  verify-flows:
+    runs-on: ubuntu-latest
+    needs: config-file
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify flow configurations
+        run: |
+          echo "🔍 Verifying flow configurations..."
+
+          BASE_FILE="base_branch/flows_to_deploy.json"
+          PR_FILE="pr_branch/flows_to_deploy.json"
+
+          # Obtener archivos desde el job anterior
+          mkdir -p base_branch pr_branch
+          git show origin/${{ github.base_ref }}:flows_to_deploy.json > "$BASE_FILE"
+          cp flows_to_deploy.json "$PR_FILE"
+
+          # Recalcular carpetas modificadas
+          echo "📂 Calculating modified folders..."
+          git fetch origin ${{ github.base_ref }}
+          git fetch origin ${{ github.head_ref }}
+
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...origin/${{ github.head_ref }} | grep '^my-project/resources/' || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            MODIFIED_FOLDERS=""
+          else
+            MODIFIED_FOLDERS=$(echo "$CHANGED_FILES" | cut -d'/' -f3 | sort -u)
+          fi
+
+          echo "Modified folders:"
+          echo "$MODIFIED_FOLDERS"
+
+          # Validar configuraciones en flows_to_deploy.json del PR
+          jq -c '.[]' "$PR_FILE" | while read -r entry; do
+            app=$(echo "$entry" | jq -r '.application')
+            deploy=$(echo "$entry" | jq -r '.deploy')
+
+            if [ "$deploy" = "true" ]; then
+              is_in_modified=$(echo "$MODIFIED_FOLDERS" | grep -Fx "$app" || true)
+              is_in_base=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' "$BASE_FILE" || echo "false")
+
+              if [ -z "$is_in_modified" ]; then
+                if [ "$is_in_base" = "true" ]; then
+                  echo "ℹ️ Application '$app' is not modified but was already true in base branch - allowed"
+                else
+                  echo "::error file=flows_to_deploy.json::Application '$app' is set to deploy=true but is not modified and wasn't true in base branch"
+                  exit 1
+                fi
+              fi
+            fi
+          done
+
+          echo "✅ Flow configuration verification passed."
