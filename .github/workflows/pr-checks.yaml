@@ -95,8 +95,8 @@ jobs:
             exit 1
           fi
 
-  config-file:
-    name: config-file
+  config-file-check-modified-flows:
+    name: config-file-check-modified-flows
     runs-on: ubuntu-latest
     needs: up-to-date
 
@@ -209,8 +209,8 @@ jobs:
           echo "- No duplicate application names"
           echo "Total applications configured: $(jq 'length' flows_to_deploy.json)"
 
-  flows-traceability-check:
-    name: flows traceability
+  config-file-check-traceability-flows:
+    name: config-file-check-traceability-flows
     runs-on: ubuntu-latest
     needs: config-file
 
@@ -256,9 +256,9 @@ jobs:
           echo "✅ flows_to_deploy.json traceability check passed."
 
   
-  verify-flows:
+  config-file-check-not-allowed-flows:
     runs-on: ubuntu-latest
-    needs: config-file
+    needs: config-file-check-not-allowed-flows
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
