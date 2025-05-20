@@ -95,7 +95,7 @@ jobs:
             exit 1
           fi
 
-  validate_flows:
+  config-file:
     name: config-file
     runs-on: ubuntu-latest
     needs: up-to-date
@@ -208,3 +208,49 @@ jobs:
           echo "- Valid JSON syntax"
           echo "- No duplicate application names"
           echo "Total applications configured: $(jq 'length' flows_to_deploy.json)"
+
+  flows-traceability-check:
+    name: flows traceability
+    runs-on: ubuntu-latest
+    needs: config-file
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base_branch
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          path: pr_branch
+
+      - name: Compare flows_to_deploy.json for traceability
+        run: |
+          echo "🔍 Verifying flows_to_deploy.json traceability..."
+
+          BASE_FILE="base_branch/flows_to_deploy.json"
+          PR_FILE="pr_branch/flows_to_deploy.json"
+
+          if [ ! -f "$BASE_FILE" ] || [ ! -f "$PR_FILE" ]; then
+            echo "::error::Missing flows_to_deploy.json in one of the branches"
+            exit 1
+          fi
+
+          jq -c '.[]' "$BASE_FILE" | while read -r base_entry; do
+            app=$(echo "$base_entry" | jq -r '.application')
+            base_deploy=$(echo "$base_entry" | jq -r '.deploy')
+
+            pr_deploy=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' "$PR_FILE")
+
+            if [ "$base_deploy" = "true" ]; then
+              if [ "$pr_deploy" != "true" ]; then
+                echo "::error file=flows_to_deploy.json::Application '$app' was marked as deploy=true in base branch but is now missing or reverted to false."
+                exit 1
+              fi
+            fi
+          done
+
+          echo "✅ flows_to_deploy.json traceability check passed."
