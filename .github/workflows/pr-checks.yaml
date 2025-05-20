@@ -212,7 +212,7 @@ jobs:
   config-file-check-traceability-flows:
     name: config-file-check-traceability-flows
     runs-on: ubuntu-latest
-    needs: config-file
+    needs: config-file-check-modified-flows
 
     steps:
       - name: Checkout base branch
@@ -257,8 +257,9 @@ jobs:
 
   
   config-file-check-not-allowed-flows:
+    name: config-file-check-not-allowed-flows
     runs-on: ubuntu-latest
-    needs: config-file-check-not-allowed-flows
+    needs: config-file-check-modified-flows
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
