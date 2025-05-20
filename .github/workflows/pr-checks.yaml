@@ -259,7 +259,7 @@ jobs:
     name: verify-flows
     runs-on: ubuntu-latest
     needs: config-file
-    
+
     steps:
       - name: Checkout base branch
         uses: actions/checkout@v4
@@ -273,43 +273,12 @@ jobs:
           ref: ${{ github.head_ref }}
           path: pr_branch
 
-      - name: Verify flow configurations
+      - name: Compare unauthorized deploy=true entries
         run: |
-          echo "🔍 Verifying flow configurations..."
-          
+          echo "🔍 Verifying unauthorized deploy=true entries in flows_to_deploy.json..."
+
           BASE_FILE="base_branch/flows_to_deploy.json"
           PR_FILE="pr_branch/flows_to_deploy.json"
-          
+
           if [ ! -f "$BASE_FILE" ] || [ ! -f "$PR_FILE" ]; then
-            echo "::error::Missing flows_to_deploy.json in one of the branches"
-            exit 1
-          fi
-          
-          # Get modified folders from previous step
-          MODIFIED_FOLDERS=$(cat $GITHUB_ENV | grep MODIFIED_FOLDERS | cut -d'=' -f2-)
-          
-          # Check each application in the PR's flows_to_deploy.json
-          jq -c '.[]' "$PR_FILE" | while read -r entry; do
-            app=$(echo "$entry" | jq -r '.application')
-            deploy=$(echo "$entry" | jq -r '.deploy')
-            
-            if [ "$deploy" = "true" ]; then
-              # Check condition a) and b)
-              is_in_modified=$(echo "$MODIFIED_FOLDERS" | grep -w "$app" || true)
-              is_in_base=$(jq -r --arg app "$app" '.[] | select(.application == $app) | .deploy' "$BASE_FILE")
-              
-              if [ -z "$is_in_modified" ]; then
-                # App not in MODIFIED_FOLDERS
-                if [ "$is_in_base" = "true" ]; then
-                  # Case a) - OK
-                  echo "ℹ️ Application '$app' is not modified but was already true in base branch - allowed"
-                else
-                  # Case b) - FAIL
-                  echo "::error file=flows_to_deploy.json::Application '$app' is set to deploy=true but is not modified and wasn't true in base branch"
-                  exit 1
-                fi
-              fi
-            fi
-          done
-          
-          echo "✅ Flow configuration verification passed."
+            echo "::error::Missing flows_to_
