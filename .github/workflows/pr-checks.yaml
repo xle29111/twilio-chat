@@ -255,7 +255,6 @@ jobs:
 
           echo "✅ flows_to_deploy.json traceability check passed."
 
-  
   config-file-check-not-allowed-flows:
     name: config-file-check-not-allowed-flows
     runs-on: ubuntu-latest
@@ -273,10 +272,34 @@ jobs:
           BASE_FILE="base_branch/flows_to_deploy.json"
           PR_FILE="pr_branch/flows_to_deploy.json"
 
-          # Get files from  last job
+          # Get files from base branch and PR branch
           mkdir -p base_branch pr_branch
           git show origin/${{ github.base_ref }}:flows_to_deploy.json > "$BASE_FILE"
           cp flows_to_deploy.json "$PR_FILE"
+
+          # Display applications with deploy=true in base branch
+          echo "📋 Applications with deploy=true in BASE branch (${{ github.base_ref }}):"
+          BASE_TRUE_APPS=$(jq -r '.[] | select(.deploy == true) | .application' "$BASE_FILE")
+          if [ -z "$BASE_TRUE_APPS" ]; then
+            echo " - None"
+          else
+            echo "$BASE_TRUE_APPS" | while read app; do
+              echo " - $app"
+            done
+          fi
+
+          # Display applications with deploy=true in PR branch
+          echo ""
+          echo "📋 Applications with deploy=true in PR branch (${{ github.head_ref }}):"
+          PR_TRUE_APPS=$(jq -r '.[] | select(.deploy == true) | .application' "$PR_FILE")
+          if [ -z "$PR_TRUE_APPS" ]; then
+            echo " - None"
+          else
+            echo "$PR_TRUE_APPS" | while read app; do
+              echo " - $app"
+            done
+          fi
+          echo ""
 
           # Recalculate modified folders
           echo "📂 Calculating modified folders..."
