@@ -1,0 +1,21 @@
+name: Check Deploy-all-flows
+
+on:
+  workflow_dispatch: # Esto permite ejecución manual
+
+jobs:
+  check-deploy-all-flows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Leer Deploy-all-flows
+        run: |
+          value=$(jq -r '.[] | select(.application == "Deploy-all-flows") | .deploy' flows_to_deploy.json)
+
+          if [ "$value" == "true" ]; then
+            echo '"Deploy-all-flows" es "true"'
+          else
+            echo '"Deploy-all-flows" es "falso"'
+          fi
