@@ -10,5 +10,9 @@
   {
     "application": "CCO MS", 
     "deploy": true
+  },
+  {
+    "application": "Deploy-all-flows", 
+    "deploy": true
   }
 ]
