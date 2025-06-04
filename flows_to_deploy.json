@@ -13,6 +13,6 @@
   },
   {
     "application": "Deploy-all-flows", 
-    "deploy": true
+    "deploy": false
   }
 ]
