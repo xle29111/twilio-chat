@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - RT
+      - hotfix/**
 
 jobs:
   tag_changes:
