@@ -26,7 +26,11 @@ jobs:
         id: find_tag
         run: |
           TAG="${{ github.event.inputs.version }}"
-          BRANCHES=("main" "develop" "rt")
+          STATIC_BRANCHES=("main" "develop" "rt")
+          HOTFIX_BRANCHES=$(git branch -r | grep 'origin/hotfix/' | sed 's|origin/||')
+
+          # Combine all branches to check
+          BRANCHES=("${STATIC_BRANCHES[@]}" ${HOTFIX_BRANCHES})
           FOUND_IN=""
 
           for BRANCH in "${BRANCHES[@]}"; do
@@ -44,18 +48,9 @@ jobs:
             echo "branch_found=$FOUND_IN" >> $GITHUB_OUTPUT
           fi
 
-      - name: Checkout from main
-        if: steps.find_tag.outputs.branch_found == 'main'
+      - name: Checkout from detected branch
         uses: actions/checkout@v4
         with:
-          ref: main
-          fetch-depth: 0
-          show-progress: false
-
-      - name: Checkout from rt
-        if: steps.find_tag.outputs.branch_found == 'rt'
-        uses: actions/checkout@v4
-        with:
-          ref: rt
+          ref: ${{ steps.find_tag.outputs.branch_found }}
           fetch-depth: 0
           show-progress: false

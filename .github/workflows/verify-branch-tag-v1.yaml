@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Tag a buscar (ej. v1.2.3)'
+        description: 'Tag to search for (e.g. v1.2.3)'
         required: true
         type: string
 
@@ -16,12 +16,14 @@ jobs:
     name: Check Tag in Branches
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Initial Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Obtiene todos los tags y referencias
+          fetch-depth: 0  # Fetch all tags and references
+          show-progress: false
 
       - name: Find Tag in Branches
+        id: find_tag
         run: |
           TAG="${{ github.event.inputs.version }}"
           BRANCHES=("main" "develop" "rt")
@@ -29,12 +31,31 @@ jobs:
 
           for BRANCH in "${BRANCHES[@]}"; do
             if git branch -r --contains "refs/tags/$TAG" | grep -q "origin/$BRANCH"; then
-              FOUND_IN+="$BRANCH "
+              FOUND_IN="$BRANCH"
+              break
             fi
           done
 
           if [[ -z "$FOUND_IN" ]]; then
-            echo "El tag $TAG no se encuentra en ninguna de las ramas especificadas."
+            echo "Tag $TAG was not found in any of the specified branches."
+            exit 1
           else
-            echo "El tag $TAG se encuentra en las siguientes ramas: $FOUND_IN"
+            echo "Tag $TAG was found in branch: $FOUND_IN"
+            echo "branch_found=$FOUND_IN" >> $GITHUB_OUTPUT
           fi
+
+      - name: Checkout from main
+        if: steps.find_tag.outputs.branch_found == 'main'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Checkout from rt
+        if: steps.find_tag.outputs.branch_found == 'rt'
+        uses: actions/checkout@v4
+        with:
+          ref: rt
+          fetch-depth: 0
+          show-progress: false
